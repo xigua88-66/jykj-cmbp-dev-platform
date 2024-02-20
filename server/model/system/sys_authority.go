@@ -21,3 +21,32 @@ type SysAuthority struct {
 func (SysAuthority) TableName() string {
 	return "sys_authorities"
 }
+
+type Roles struct {
+	Id         string    `json:"id"`
+	Name       string    `json:"name"`
+	RoleName   string    `json:"role_name"` //角色描述
+	Remarks    string    `json:"remarks"`   // 备注
+	Flag       bool      `json:"flag"`      // 角色状态 0 禁用 1 启用
+	CreateTime time.Time `json:"create_time"`
+	UpdateTime time.Time `json:"update_time"`
+}
+
+func (Roles) TableName() string {
+	return "t_roles_info"
+}
+
+type UserRoles struct {
+	Id         string    `json:"id"`
+	UserId     string    `json:"user_id"`
+	RoleId     string    `json:"role_id"`
+	MineCode   string    `json:"mine_code"`
+	CreateTime time.Time `json:"create_time"`
+	UpdateTime time.Time `json:"update_time"`
+	User       string    `json:"user"`
+	Role       string    `json:"role"`
+}
+
+func (UserRoles) TableName() string {
+	return "t_user_roles"
+}

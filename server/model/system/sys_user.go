@@ -3,6 +3,7 @@ package system
 import (
 	"github.com/gofrs/uuid/v5"
 	"jykj-cmbp-dev-platform/server/global"
+	"time"
 )
 
 type SysUser struct {
@@ -25,4 +26,30 @@ type SysUser struct {
 
 func (SysUser) TableName() string {
 	return "sys_users"
+}
+
+type Users struct {
+	//global.CMBP_MODEL
+	Id          string `json:"id"`
+	Account     int    `json:"account" gorm:"default:NULL;comment:账号"`
+	Password    string `json:"password"`
+	MineCode    string `json:"mine_code"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	Phone       int    `json:"phone"`
+	Token       string `json:"token"`
+	IsActive    bool   `json:"is_active"`
+	RootDisable bool   `json:"root_disable"`
+	//Role        string    `json:"role"`
+	MoveFlag   int       `json:"move_flag"`
+	ExpireTime time.Time `json:"expire_time"`
+	//LabelTasks     string    `json:"label_tasks"`
+	ExpireLoginNum int       `json:"expire_login_num"`
+	DingAccount    int       `json:"ding_account"`
+	CreateTime     time.Time `json:"create_time"`
+	UpdateTime     time.Time `json:"update_time"`
+}
+
+func (Users) TableName() string {
+	return "t_user_info"
 }

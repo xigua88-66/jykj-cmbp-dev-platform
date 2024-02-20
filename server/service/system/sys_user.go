@@ -3,6 +3,7 @@ package system
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -40,20 +41,50 @@ func (userService *UserService) Register(u system.SysUser) (userInter system.Sys
 //@param: u *model.SysUser
 //@return: err error, userInter *model.SysUser
 
-func (userService *UserService) Login(u *system.SysUser) (userInter *system.SysUser, err error) {
+func (userService *UserService) Login(u *system.Users) (userInter *system.Users, err error) {
 	if nil == global.CMBP_DB {
 		return nil, fmt.Errorf("db not init")
 	}
 
-	var user system.SysUser
-	err = global.CMBP_DB.Where("username = ?", u.Username).Preload("Authorities").Preload("Authority").First(&user).Error
+	var user system.Users
+	err = global.CMBP_DB.Where("username = ?", u.Username).First(&user).Error
+	fmt.Println("请求的密码是：", u.Password)
+	fmt.Println("数据库的密码是：", user.Password, user.Username)
+
+	// todo 登录公司平台
+
 	if err == nil {
 		if ok := utils.BcryptCheck(u.Password, user.Password); !ok {
 			return nil, errors.New("密码错误")
 		}
 		MenuServiceApp.UserAuthorityDefaultRouter(&user)
+
+		if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(user.ExpireTime) && user.ExpireLoginNum > 0 {
+			user.IsActive = false
+			user.RootDisable = true
+			err = global.CMBP_DB.Save(&user).Error
+			if err != nil {
+				return nil, errors.New("该角色修改权限时发生错误")
+			}
+			return nil, errors.New("该用户账号已过期，请联系管理员")
+		} else if user.IsActive == false {
+			return nil, errors.New("该用户已被管理员被禁用,请联系管理员")
+		} else {
+			if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(user.ExpireTime) {
+				user.ExpireLoginNum = 1
+				err = global.CMBP_DB.Save(&user).Error
+				if err != nil {
+					return nil, errors.New("该角色修改权限时发生错误")
+				}
+				return &user, errors.New("当前账号已经过期，这是您最后一次登录，请联系管理员")
+			}
+			return &user, err
+		}
 	}
-	return &user, err
+	if strings.Contains(err.Error(), "record not found") {
+		return nil, errors.New("用户不存在")
+	}
+	return nil, err
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -199,8 +230,8 @@ func (userService *UserService) SetSelfInfo(req system.SysUser) error {
 //@param: uuid uuid.UUID
 //@return: err error, user system.SysUser
 
-func (userService *UserService) GetUserInfo(uuid uuid.UUID) (user system.SysUser, err error) {
-	var reqUser system.SysUser
+func (userService *UserService) GetUserInfo(uuid uuid.UUID) (user system.Users, err error) {
+	var reqUser system.Users
 	err = global.CMBP_DB.Preload("Authorities").Preload("Authority").First(&reqUser, "uuid = ?", uuid).Error
 	if err != nil {
 		return reqUser, err

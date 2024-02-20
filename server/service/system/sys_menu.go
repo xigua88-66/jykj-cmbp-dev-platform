@@ -2,6 +2,7 @@ package system
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"gorm.io/gorm"
@@ -220,15 +221,16 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 // UserAuthorityDefaultRouter 用户角色默认路由检查
 //
 //	Author [SliverHorn](https://github.com/SliverHorn)
-func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.SysUser) {
+func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.Users) {
 	var menuIds []string
-	err := global.CMBP_DB.Model(&system.SysAuthorityMenu{}).Where("sys_authority_authority_id = ?", user.AuthorityId).Pluck("sys_base_menu_id", &menuIds).Error
+	err := global.CMBP_DB.Model(&system.RoleMenus{}).Joins("JOIN t_user_roles ON t_role_menus.role_id = t_user_roles.role_id").Where("t_user_roles.user_id = ?", user.Id).Pluck("t_role_menus.menu_id", &menuIds).Error
 	if err != nil {
 		return
 	}
-	var am system.SysBaseMenu
-	err = global.CMBP_DB.First(&am, "name = ? and id in (?)", user.Authority.DefaultRouter, menuIds).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		user.Authority.DefaultRouter = "404"
-	}
+	fmt.Printf("角色的ID列表", menuIds)
+	//var am system.SysBaseMenu
+	//err = global.CMBP_DB.First(&am, "name = ? and id in (?)", user.Authority.DefaultRouter, menuIds).Error
+	//if errors.Is(err, gorm.ErrRecordNotFound) {
+	//	user.Authority.DefaultRouter = "404"
+	//}
 }

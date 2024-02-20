@@ -2,6 +2,7 @@ package system
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"jykj-cmbp-dev-platform/server/global"
@@ -49,40 +50,43 @@ func (b *BaseApi) Login(c *gin.Context) {
 
 	var oc bool = openCaptcha == 0 || openCaptcha < interfaceToInt(v)
 
-	if !oc || (l.CaptchaId != "" && l.Captcha != "" && store.Verify(l.CaptchaId, l.Captcha, true)) {
-		u := &system.SysUser{Username: l.Username, Password: l.Password}
+	if !oc || (l.ImgID != "" && l.Captcha != "" && store.Verify(l.ImgID, l.Captcha, true)) {
+		u := &system.Users{Username: l.Username, Password: l.Password}
 		user, err := userService.Login(u)
 		if err != nil {
-			global.CMBP_LOG.Error("登陆失败! 用户名不存在或者密码错误!", zap.Error(err))
+			if strings.Contains(err.Error(), "最后一次登录") {
+				global.CMBP_LOG.Warn("用户过期，最后一次登录", zap.Error(err))
+				b.TokenNext(c, *user)
+				return
+			}
+			global.CMBP_LOG.Error(err.Error(), zap.Error(err))
 			// 验证码次数+1
 			global.BlackCache.Increment(key, 1)
-			response.FailWithMessage("用户名不存在或者密码错误", c)
+			response.FailWithMessage(err.Error(), c)
 			return
 		}
-		if user.Enable != 1 {
+		if user.IsActive != true {
 			global.CMBP_LOG.Error("登陆失败! 用户被禁止登录!")
 			// 验证码次数+1
 			global.BlackCache.Increment(key, 1)
-			response.FailWithMessage("用户被禁止登录", c)
+			response.FailWithMessage(err.Error(), c)
 			return
 		}
 		b.TokenNext(c, *user)
 		return
 	}
-	// 验证码次数+1
-	global.BlackCache.Increment(key, 1)
-	response.FailWithMessage("验证码错误", c)
+
 }
 
 // TokenNext 登录以后签发jwt
-func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
+func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 	j := &utils.JWT{SigningKey: []byte(global.CMBP_CONFIG.JWT.SigningKey)} // 唯一签名
 	claims := j.CreateClaims(systemReq.BaseClaims{
-		UUID:        user.UUID,
-		ID:          user.ID,
-		NickName:    user.NickName,
-		Username:    user.Username,
-		AuthorityId: user.AuthorityId,
+		//UUID:        user.UUID,
+		//ID:          user.ID,
+		Phone:    user.Phone,
+		Username: user.Username,
+		//AuthorityId: user.AuthorityId,
 	})
 	token, err := j.CreateToken(claims)
 	if err != nil {
@@ -93,9 +97,11 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
 	if !global.CMBP_CONFIG.System.UseMultipoint {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
-			User:      user,
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
+			Role:      "ROOT",
+			IsExpire:  0,
+			IsCloud:   true,
 		}, "登录成功", c)
 		return
 	}
@@ -108,7 +114,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
 		}
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
-			User:      user,
+			//User:      user,
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
 		}, "登录成功", c)
@@ -128,7 +134,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
 		}
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
-			User:      user,
+			//User:      user,
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
 		}, "登录成功", c)

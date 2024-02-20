@@ -1,5 +1,7 @@
 package system
 
+import "time"
+
 type SysMenu struct {
 	SysBaseMenu
 	MenuId      string                 `json:"menuId" gorm:"comment:菜单ID"`
@@ -16,4 +18,16 @@ type SysAuthorityMenu struct {
 
 func (s SysAuthorityMenu) TableName() string {
 	return "sys_authority_menus"
+}
+
+type RoleMenus struct {
+	Id         string    `json:"id"`
+	RoleId     string    `json:"role_id"`
+	MenuId     string    `json:"menu_id"`
+	CreateTime time.Time `json:"create_time"`
+	UpdateTime time.Time `json:"update_time"`
+}
+
+func (RoleMenus) TableName() string {
+	return "t_role_menus"
 }
