@@ -2,10 +2,10 @@ package system
 
 import (
 	"context"
-	sysModel "github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/service/system"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+	sysModel "jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/service/system"
 )
 
 const initOrderDict = initOrderCasbin + 1

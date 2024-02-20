@@ -3,10 +3,10 @@ package initialize
 import (
 	"context"
 	adapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/example"
-	sysModel "github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/service/system"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/model/example"
+	sysModel "jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/service/system"
 )
 
 const initOrderEnsureTables = system.InitOrderExternal - 1

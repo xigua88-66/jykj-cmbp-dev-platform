@@ -1,11 +1,11 @@
 package initialize
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/initialize/internal"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/initialize/internal"
 )
 
 // GormPgSql 初始化 Postgresql 数据库

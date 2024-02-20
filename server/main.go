@@ -3,9 +3,9 @@ package main
 import (
 	"go.uber.org/zap"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/core"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/initialize"
+	"jykj-cmbp-dev-platform/server/core"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/initialize"
 )
 
 //go:generate go env -w GO111MODULE=on
@@ -29,7 +29,7 @@ func main() {
 	initialize.Timer()
 	initialize.DBList()
 	if global.GVA_DB != nil {
-		initialize.RegisterTables() // 初始化表
+		//initialize.RegisterTables() // 初始化表
 		// 程序结束前关闭数据库链接
 		db, _ := global.GVA_DB.DB()
 		defer db.Close()

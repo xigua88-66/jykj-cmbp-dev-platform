@@ -3,7 +3,7 @@ package upload
 import (
 	"mime/multipart"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"jykj-cmbp-dev-platform/server/global"
 )
 
 // OSS 对象存储接口

@@ -2,11 +2,11 @@ package core
 
 import (
 	"fmt"
-	"github.com/flipped-aurora/gin-vue-admin/server/core/internal"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"jykj-cmbp-dev-platform/server/core/internal"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/utils"
 	"os"
 )
 

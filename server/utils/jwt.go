@@ -6,8 +6,8 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v4"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system/request"
 )
 
 type JWT struct {

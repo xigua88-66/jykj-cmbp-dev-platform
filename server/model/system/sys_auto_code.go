@@ -5,7 +5,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"jykj-cmbp-dev-platform/server/global"
 )
 
 // AutoCodeStruct 初始版本自动化代码工具

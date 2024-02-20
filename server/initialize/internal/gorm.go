@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"jykj-cmbp-dev-platform/server/global"
 )
 
 type DBBASE interface {

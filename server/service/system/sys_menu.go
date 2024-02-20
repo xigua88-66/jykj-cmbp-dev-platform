@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/common/request"
+	"jykj-cmbp-dev-platform/server/model/system"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -218,6 +218,7 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 }
 
 // UserAuthorityDefaultRouter 用户角色默认路由检查
+//
 //	Author [SliverHorn](https://github.com/SliverHorn)
 func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.SysUser) {
 	var menuIds []string

@@ -1,13 +1,13 @@
 package initialize
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/docs"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
-	"github.com/flipped-aurora/gin-vue-admin/server/router"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"jykj-cmbp-dev-platform/server/docs"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/middleware"
+	"jykj-cmbp-dev-platform/server/router"
 	"net/http"
 	"os"
 )

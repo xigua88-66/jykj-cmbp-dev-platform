@@ -3,11 +3,11 @@ package initialize
 import (
 	"fmt"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/email"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils/plugin"
 	"github.com/gin-gonic/gin"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/middleware"
+	"jykj-cmbp-dev-platform/server/plugin/email"
+	"jykj-cmbp-dev-platform/server/utils/plugin"
 )
 
 func PluginInit(group *gin.RouterGroup, Plugin ...plugin.Plugin) {

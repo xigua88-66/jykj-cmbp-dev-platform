@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"github.com/gin-gonic/gin"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/global"
 	"net/http"
 )
 

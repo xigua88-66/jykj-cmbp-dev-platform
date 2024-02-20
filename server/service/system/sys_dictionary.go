@@ -3,9 +3,9 @@ package system
 import (
 	"errors"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)

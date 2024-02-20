@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/api/v1/example"
-	"github.com/flipped-aurora/gin-vue-admin/server/api/v1/system"
+	"jykj-cmbp-dev-platform/server/api/v1/example"
+	"jykj-cmbp-dev-platform/server/api/v1/system"
 )
 
 type ApiGroup struct {

@@ -2,14 +2,14 @@ package system
 
 import (
 	"errors"
-	systemReq "github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
+	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"strconv"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/response"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/common/request"
+	"jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/model/system/response"
 )
 
 var ErrRoleExistence = errors.New("存在相同角色id")

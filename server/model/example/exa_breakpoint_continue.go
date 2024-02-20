@@ -1,7 +1,7 @@
 package example
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"jykj-cmbp-dev-platform/server/global"
 )
 
 // file struct, 文件结构体

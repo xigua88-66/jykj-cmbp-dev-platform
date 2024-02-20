@@ -3,14 +3,14 @@ package system
 import (
 	"context"
 	"errors"
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/glebarez/sqlite"
 	"github.com/gofrs/uuid/v5"
 	"github.com/gookit/color"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system/request"
+	"jykj-cmbp-dev-platform/server/utils"
 	"path/filepath"
 )
 

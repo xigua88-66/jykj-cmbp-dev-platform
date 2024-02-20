@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/router/example"
-	"github.com/flipped-aurora/gin-vue-admin/server/router/system"
+	"jykj-cmbp-dev-platform/server/router/example"
+	"jykj-cmbp-dev-platform/server/router/system"
 )
 
 type RouterGroup struct {

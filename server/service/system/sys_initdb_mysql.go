@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
 	"github.com/gookit/color"
+	"jykj-cmbp-dev-platform/server/config"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
+	"jykj-cmbp-dev-platform/server/utils"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
 	"github.com/gofrs/uuid/v5"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system/request"
 )
 
 type MysqlInitHandler struct{}

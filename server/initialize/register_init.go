@@ -1,8 +1,8 @@
 package initialize
 
 import (
-	_ "github.com/flipped-aurora/gin-vue-admin/server/source/example"
-	_ "github.com/flipped-aurora/gin-vue-admin/server/source/system"
+	_ "jykj-cmbp-dev-platform/server/source/example"
+	_ "jykj-cmbp-dev-platform/server/source/system"
 )
 
 func init() {

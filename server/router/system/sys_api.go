@@ -1,9 +1,9 @@
 package system
 
 import (
-	v1 "github.com/flipped-aurora/gin-vue-admin/server/api/v1"
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
 	"github.com/gin-gonic/gin"
+	v1 "jykj-cmbp-dev-platform/server/api/v1"
+	"jykj-cmbp-dev-platform/server/middleware"
 )
 
 type ApiRouter struct{}

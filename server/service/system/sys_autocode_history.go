@@ -3,19 +3,19 @@ package system
 import (
 	"errors"
 	"fmt"
-	systemReq "github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils/ast"
+	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
+	"jykj-cmbp-dev-platform/server/utils/ast"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/response"
+	"jykj-cmbp-dev-platform/server/model/system/response"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/common/request"
+	"jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/utils"
 
 	"go.uber.org/zap"
 )

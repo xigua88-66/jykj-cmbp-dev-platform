@@ -2,9 +2,9 @@ package initialize
 
 import (
 	//"github.com/dzwvip/oracle"
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/initialize/internal"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/initialize/internal"
 
 	//_ "github.com/godror/godror"
 	"gorm.io/driver/mysql"

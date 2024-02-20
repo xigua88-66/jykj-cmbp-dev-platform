@@ -6,14 +6,14 @@ import (
 	"mime/multipart"
 	"strconv"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/model/example"
+	"jykj-cmbp-dev-platform/server/model/example"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
-	exampleRes "github.com/flipped-aurora/gin-vue-admin/server/model/example/response"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/common/response"
+	exampleRes "jykj-cmbp-dev-platform/server/model/example/response"
+	"jykj-cmbp-dev-platform/server/utils"
 )
 
 // BreakpointContinue

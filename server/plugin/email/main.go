@@ -1,9 +1,9 @@
 package email
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/email/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/email/router"
 	"github.com/gin-gonic/gin"
+	"jykj-cmbp-dev-platform/server/plugin/email/global"
+	"jykj-cmbp-dev-platform/server/plugin/email/router"
 )
 
 type emailPlugin struct{}

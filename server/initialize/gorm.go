@@ -3,9 +3,9 @@ package initialize
 import (
 	"os"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/example"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/example"
+	"jykj-cmbp-dev-platform/server/model/system"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

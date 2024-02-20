@@ -1,9 +1,9 @@
 package router
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/email/api"
 	"github.com/gin-gonic/gin"
+	"jykj-cmbp-dev-platform/server/middleware"
+	"jykj-cmbp-dev-platform/server/plugin/email/api"
 )
 
 type EmailRouter struct{}

@@ -1,11 +1,11 @@
 package system
 
 import (
-	"github.com/flipped-aurora/gin-vue-admin/server/config"
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"go.uber.org/zap"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/utils"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)

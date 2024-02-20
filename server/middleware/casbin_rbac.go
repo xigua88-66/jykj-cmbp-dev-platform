@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
-	"github.com/flipped-aurora/gin-vue-admin/server/service"
-	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/common/response"
+	"jykj-cmbp-dev-platform/server/service"
+	"jykj-cmbp-dev-platform/server/utils"
 )
 
 var casbinService = service.ServiceGroupApp.SystemServiceGroup.CasbinService

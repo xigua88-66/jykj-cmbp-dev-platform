@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/email/utils"
-	utils2 "github.com/flipped-aurora/gin-vue-admin/server/utils"
+	"jykj-cmbp-dev-platform/server/plugin/email/utils"
+	utils2 "jykj-cmbp-dev-platform/server/utils"
 
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"jykj-cmbp-dev-platform/server/global"
+	"jykj-cmbp-dev-platform/server/model/system"
+	"jykj-cmbp-dev-platform/server/service"
 )
 
 var userService = service.ServiceGroupApp.SystemServiceGroup.UserService
