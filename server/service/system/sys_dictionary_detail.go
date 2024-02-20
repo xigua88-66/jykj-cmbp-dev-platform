@@ -15,7 +15,7 @@ import (
 type DictionaryDetailService struct{}
 
 func (dictionaryDetailService *DictionaryDetailService) CreateSysDictionaryDetail(sysDictionaryDetail system.SysDictionaryDetail) (err error) {
-	err = global.GVA_DB.Create(&sysDictionaryDetail).Error
+	err = global.CMBP_DB.Create(&sysDictionaryDetail).Error
 	return err
 }
 
@@ -26,7 +26,7 @@ func (dictionaryDetailService *DictionaryDetailService) CreateSysDictionaryDetai
 //@return: err error
 
 func (dictionaryDetailService *DictionaryDetailService) DeleteSysDictionaryDetail(sysDictionaryDetail system.SysDictionaryDetail) (err error) {
-	err = global.GVA_DB.Delete(&sysDictionaryDetail).Error
+	err = global.CMBP_DB.Delete(&sysDictionaryDetail).Error
 	return err
 }
 
@@ -37,7 +37,7 @@ func (dictionaryDetailService *DictionaryDetailService) DeleteSysDictionaryDetai
 //@return: err error
 
 func (dictionaryDetailService *DictionaryDetailService) UpdateSysDictionaryDetail(sysDictionaryDetail *system.SysDictionaryDetail) (err error) {
-	err = global.GVA_DB.Save(sysDictionaryDetail).Error
+	err = global.CMBP_DB.Save(sysDictionaryDetail).Error
 	return err
 }
 
@@ -48,7 +48,7 @@ func (dictionaryDetailService *DictionaryDetailService) UpdateSysDictionaryDetai
 //@return: sysDictionaryDetail system.SysDictionaryDetail, err error
 
 func (dictionaryDetailService *DictionaryDetailService) GetSysDictionaryDetail(id uint) (sysDictionaryDetail system.SysDictionaryDetail, err error) {
-	err = global.GVA_DB.Where("id = ?", id).First(&sysDictionaryDetail).Error
+	err = global.CMBP_DB.Where("id = ?", id).First(&sysDictionaryDetail).Error
 	return
 }
 
@@ -62,7 +62,7 @@ func (dictionaryDetailService *DictionaryDetailService) GetSysDictionaryDetailIn
 	limit := info.PageSize
 	offset := info.PageSize * (info.Page - 1)
 	// 创建db
-	db := global.GVA_DB.Model(&system.SysDictionaryDetail{})
+	db := global.CMBP_DB.Model(&system.SysDictionaryDetail{})
 	var sysDictionaryDetails []system.SysDictionaryDetail
 	// 如果有条件搜索 下方会自动创建搜索语句
 	if info.Label != "" {
@@ -88,14 +88,14 @@ func (dictionaryDetailService *DictionaryDetailService) GetSysDictionaryDetailIn
 // 按照字典id获取字典全部内容的方法
 func (dictionaryDetailService *DictionaryDetailService) GetDictionaryList(dictionaryID uint) (list []system.SysDictionaryDetail, err error) {
 	var sysDictionaryDetails []system.SysDictionaryDetail
-	err = global.GVA_DB.Find(&sysDictionaryDetails, "sys_dictionary_id = ?", dictionaryID).Error
+	err = global.CMBP_DB.Find(&sysDictionaryDetails, "sys_dictionary_id = ?", dictionaryID).Error
 	return sysDictionaryDetails, err
 }
 
 // 按照字典type获取字典全部内容的方法
 func (dictionaryDetailService *DictionaryDetailService) GetDictionaryListByType(t string) (list []system.SysDictionaryDetail, err error) {
 	var sysDictionaryDetails []system.SysDictionaryDetail
-	db := global.GVA_DB.Model(&system.SysDictionaryDetail{}).Joins("JOIN sys_dictionaries ON sys_dictionaries.id = sys_dictionary_details.sys_dictionary_id")
+	db := global.CMBP_DB.Model(&system.SysDictionaryDetail{}).Joins("JOIN sys_dictionaries ON sys_dictionaries.id = sys_dictionary_details.sys_dictionary_id")
 	err = db.Debug().Find(&sysDictionaryDetails, "type = ?", t).Error
 	return sysDictionaryDetails, err
 }
@@ -103,14 +103,14 @@ func (dictionaryDetailService *DictionaryDetailService) GetDictionaryListByType(
 // 按照字典id+字典内容value获取单条字典内容
 func (dictionaryDetailService *DictionaryDetailService) GetDictionaryInfoByValue(dictionaryID uint, value uint) (detail system.SysDictionaryDetail, err error) {
 	var sysDictionaryDetail system.SysDictionaryDetail
-	err = global.GVA_DB.First(&sysDictionaryDetail, "sys_dictionary_id = ? and value = ?", dictionaryID, value).Error
+	err = global.CMBP_DB.First(&sysDictionaryDetail, "sys_dictionary_id = ? and value = ?", dictionaryID, value).Error
 	return sysDictionaryDetail, err
 }
 
 // 按照字典type+字典内容value获取单条字典内容
 func (dictionaryDetailService *DictionaryDetailService) GetDictionaryInfoByTypeValue(t string, value uint) (detail system.SysDictionaryDetail, err error) {
 	var sysDictionaryDetails system.SysDictionaryDetail
-	db := global.GVA_DB.Model(&system.SysDictionaryDetail{}).Joins("JOIN sys_dictionaries ON sys_dictionaries.id = sys_dictionary_details.sys_dictionary_id")
+	db := global.CMBP_DB.Model(&system.SysDictionaryDetail{}).Joins("JOIN sys_dictionaries ON sys_dictionaries.id = sys_dictionary_details.sys_dictionary_id")
 	err = db.First(&sysDictionaryDetails, "sys_dictionaries.type = ? and sys_dictionary_details.value = ?", t, value).Error
 	return sysDictionaryDetails, err
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func Gorm() *gorm.DB {
-	switch global.GVA_CONFIG.System.DbType {
+	switch global.CMBP_CONFIG.System.DbType {
 	case "mysql":
 		return GormMysql()
 	case "pgsql":
@@ -29,7 +29,7 @@ func Gorm() *gorm.DB {
 }
 
 func RegisterTables() {
-	db := global.GVA_DB
+	db := global.CMBP_DB
 	err := db.AutoMigrate(
 
 		system.SysApi{},
@@ -53,8 +53,8 @@ func RegisterTables() {
 		example.ExaFileUploadAndDownload{},
 	)
 	if err != nil {
-		global.GVA_LOG.Error("register table failed", zap.Error(err))
+		global.CMBP_LOG.Error("register table failed", zap.Error(err))
 		os.Exit(0)
 	}
-	global.GVA_LOG.Info("register table success")
+	global.CMBP_LOG.Info("register table success")
 }

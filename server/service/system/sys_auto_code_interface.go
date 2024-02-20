@@ -14,7 +14,7 @@ type Database interface {
 func (autoCodeService *AutoCodeService) Database(businessDB string) Database {
 
 	if businessDB == "" {
-		switch global.GVA_CONFIG.System.DbType {
+		switch global.CMBP_CONFIG.System.DbType {
 		case "mysql":
 			return AutoCodeMysql
 		case "pgsql":
@@ -25,7 +25,7 @@ func (autoCodeService *AutoCodeService) Database(businessDB string) Database {
 			return AutoCodeMysql
 		}
 	} else {
-		for _, info := range global.GVA_CONFIG.DBList {
+		for _, info := range global.CMBP_CONFIG.DBList {
 			if info.AliasName == businessDB {
 				switch info.Type {
 				case "mysql":
