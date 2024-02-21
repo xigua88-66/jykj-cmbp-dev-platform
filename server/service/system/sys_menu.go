@@ -2,9 +2,6 @@ package system
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
-
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/request"
@@ -21,7 +18,7 @@ type MenuService struct{}
 
 var MenuServiceApp = new(MenuService)
 
-func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[string][]system.SysMenu, err error) {
+func (menuService *MenuService) getMenuTreeMap(authorityId string) (treeMap map[string][]system.SysMenu, err error) {
 	var allMenus []system.SysMenu
 	var baseMenu []system.SysBaseMenu
 	var btns []system.SysAuthorityBtn
@@ -48,8 +45,9 @@ func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[st
 		allMenus = append(allMenus, system.SysMenu{
 			SysBaseMenu: baseMenu[i],
 			AuthorityId: authorityId,
-			MenuId:      strconv.Itoa(int(baseMenu[i].ID)),
-			Parameters:  baseMenu[i].Parameters,
+			//MenuId:      strconv.Itoa(int(baseMenu[i].ID)),
+			MenuId:     baseMenu[i].ID,
+			Parameters: baseMenu[i].Parameters,
 		})
 	}
 
@@ -57,10 +55,10 @@ func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[st
 	if err != nil {
 		return
 	}
-	var btnMap = make(map[uint]map[string]uint)
+	var btnMap = make(map[string]map[string]string)
 	for _, v := range btns {
 		if btnMap[v.SysMenuID] == nil {
-			btnMap[v.SysMenuID] = make(map[string]uint)
+			btnMap[v.SysMenuID] = make(map[string]string)
 		}
 		btnMap[v.SysMenuID][v.SysBaseMenuBtn.Name] = authorityId
 	}
@@ -77,7 +75,7 @@ func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[st
 //@param: authorityId string
 //@return: menus []system.SysMenu, err error
 
-func (menuService *MenuService) GetMenuTree(authorityId uint) (menus []system.SysMenu, err error) {
+func (menuService *MenuService) GetMenuTree(authorityId string) (menus []system.SysMenu, err error) {
 	menuTree, err := menuService.getMenuTreeMap(authorityId)
 	menus = menuTree["0"]
 	for i := 0; i < len(menus); i++ {
@@ -122,7 +120,8 @@ func (menuService *MenuService) GetInfoList() (list interface{}, total int64, er
 //@return: err error
 
 func (menuService *MenuService) getBaseChildrenList(menu *system.SysBaseMenu, treeMap map[string][]system.SysBaseMenu) (err error) {
-	menu.Children = treeMap[strconv.Itoa(int(menu.ID))]
+	//menu.Children = treeMap[strconv.Itoa(int(menu.ID))]
+	menu.Children = treeMap[menu.ID]
 	for i := 0; i < len(menu.Children); i++ {
 		err = menuService.getBaseChildrenList(&menu.Children[i], treeMap)
 	}
@@ -177,7 +176,7 @@ func (menuService *MenuService) GetBaseMenuTree() (menus []system.SysBaseMenu, e
 //@param: menus []model.SysBaseMenu, authorityId string
 //@return: err error
 
-func (menuService *MenuService) AddMenuAuthority(menus []system.SysBaseMenu, authorityId uint) (err error) {
+func (menuService *MenuService) AddMenuAuthority(menus []system.SysBaseMenu, authorityId string) (err error) {
 	var auth system.SysAuthority
 	auth.AuthorityId = authorityId
 	auth.SysBaseMenus = menus
@@ -211,7 +210,7 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 		menus = append(menus, system.SysMenu{
 			SysBaseMenu: baseMenu[i],
 			AuthorityId: info.AuthorityId,
-			MenuId:      strconv.Itoa(int(baseMenu[i].ID)),
+			MenuId:      baseMenu[i].ID,
 			Parameters:  baseMenu[i].Parameters,
 		})
 	}
@@ -223,11 +222,10 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 //	Author [SliverHorn](https://github.com/SliverHorn)
 func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.Users) {
 	var menuIds []string
-	err := global.CMBP_DB.Model(&system.RoleMenus{}).Joins("JOIN t_user_roles ON t_role_menus.role_id = t_user_roles.role_id").Where("t_user_roles.user_id = ?", user.Id).Pluck("t_role_menus.menu_id", &menuIds).Error
+	err := global.CMBP_DB.Model(&system.RoleMenus{}).Joins("JOIN t_user_roles ON t_role_menus.role_id = t_user_roles.role_id").Where("t_user_roles.user_id = ?", user.ID).Pluck("t_role_menus.menu_id", &menuIds).Error
 	if err != nil {
 		return
 	}
-	fmt.Printf("角色的ID列表", menuIds)
 	//var am system.SysBaseMenu
 	//err = global.CMBP_DB.First(&am, "name = ? and id in (?)", user.Authority.DefaultRouter, menuIds).Error
 	//if errors.Is(err, gorm.ErrRecordNotFound) {

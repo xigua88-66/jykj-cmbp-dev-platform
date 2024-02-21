@@ -93,8 +93,8 @@ func (userService *UserService) Login(u *system.Users) (userInter *system.Users,
 //@param: u *model.SysUser, newPassword string
 //@return: userInter *model.SysUser,err error
 
-func (userService *UserService) ChangePassword(u *system.SysUser, newPassword string) (userInter *system.SysUser, err error) {
-	var user system.SysUser
+func (userService *UserService) ChangePassword(u *system.Users, newPassword string) (userInter *system.Users, err error) {
+	var user system.Users
 	if err = global.CMBP_DB.Where("id = ?", u.ID).First(&user).Error; err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (userService *UserService) GetUserInfoList(info request.PageInfo) (list int
 //@param: uuid uuid.UUID, authorityId string
 //@return: err error
 
-func (userService *UserService) SetUserAuthority(id uint, authorityId uint) (err error) {
+func (userService *UserService) SetUserAuthority(id string, authorityId string) (err error) {
 	assignErr := global.CMBP_DB.Where("sys_user_id = ? AND sys_authority_authority_id = ?", id, authorityId).First(&system.SysUserAuthority{}).Error
 	if errors.Is(assignErr, gorm.ErrRecordNotFound) {
 		return errors.New("该用户无此角色")
@@ -147,7 +147,7 @@ func (userService *UserService) SetUserAuthority(id uint, authorityId uint) (err
 //@param: id uint, authorityIds []string
 //@return: err error
 
-func (userService *UserService) SetUserAuthorities(id uint, authorityIds []uint) (err error) {
+func (userService *UserService) SetUserAuthorities(id string, authorityIds []string) (err error) {
 	return global.CMBP_DB.Transaction(func(tx *gorm.DB) error {
 		TxErr := tx.Delete(&[]system.SysUserAuthority{}, "sys_user_id = ?", id).Error
 		if TxErr != nil {
@@ -272,7 +272,22 @@ func (userService *UserService) FindUserByUuid(uuid string) (user *system.SysUse
 //@param: ID uint
 //@return: err error
 
-func (userService *UserService) ResetPassword(ID uint) (err error) {
+func (userService *UserService) ResetPassword(ID string) (err error) {
 	err = global.CMBP_DB.Model(&system.SysUser{}).Where("id = ?", ID).Update("password", utils.BcryptHash("123456")).Error
 	return err
 }
+
+//func (UserService *UserService) UpdateUserInfo(user system.Users) (err error) {
+//	return global.CMBP_DB.Model(&system.Users{}).
+//		Select("updated_at", "nick_name", "header_img", "phone", "email", "sideMode", "enable").
+//		Where("id=?", req.ID).
+//		Updates(map[string]interface{}{
+//			"updated_at": time.Now(),
+//			"nick_name":  req.NickName,
+//			"header_img": req.HeaderImg,
+//			"phone":      req.Phone,
+//			"email":      req.Email,
+//			"side_mode":  req.SideMode,
+//			"enable":     req.Enable,
+//		}).Error
+//}

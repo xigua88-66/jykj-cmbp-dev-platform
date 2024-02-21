@@ -2,7 +2,6 @@ package system
 
 import (
 	"errors"
-
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/system"

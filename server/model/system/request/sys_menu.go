@@ -8,12 +8,12 @@ import (
 // Add menu authority info structure
 type AddMenuAuthorityInfo struct {
 	Menus       []system.SysBaseMenu `json:"menus"`
-	AuthorityId uint                 `json:"authorityId"` // 角色ID
+	AuthorityId string               `json:"authorityId"` // 角色ID
 }
 
 func DefaultMenu() []system.SysBaseMenu {
 	return []system.SysBaseMenu{{
-		CMBP_MODEL: global.CMBP_MODEL{ID: 1},
+		CMBP_MODEL: global.CMBP_MODEL{ID: ""},
 		ParentId:   "0",
 		Path:       "dashboard",
 		Name:       "dashboard",

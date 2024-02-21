@@ -27,7 +27,7 @@ func (e *FileUploadAndDownloadService) Upload(file example.ExaFileUploadAndDownl
 //@param: id uint
 //@return: model.ExaFileUploadAndDownload, error
 
-func (e *FileUploadAndDownloadService) FindFile(id uint) (example.ExaFileUploadAndDownload, error) {
+func (e *FileUploadAndDownloadService) FindFile(id string) (example.ExaFileUploadAndDownload, error) {
 	var file example.ExaFileUploadAndDownload
 	err := global.CMBP_DB.Where("id = ?", id).First(&file).Error
 	return file, err

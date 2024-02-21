@@ -38,7 +38,7 @@ func (e *FileUploadAndDownloadService) FindOrCreateFile(fileMd5 string, fileName
 //@param: id uint, fileChunkPath string, fileChunkNumber int
 //@return: error
 
-func (e *FileUploadAndDownloadService) CreateFileChunk(id uint, fileChunkPath string, fileChunkNumber int) error {
+func (e *FileUploadAndDownloadService) CreateFileChunk(id string, fileChunkPath string, fileChunkNumber int) error {
 	var chunk example.ExaFileChunk
 	chunk.FileChunkPath = fileChunkPath
 	chunk.ExaFileID = id

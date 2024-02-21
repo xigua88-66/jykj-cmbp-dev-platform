@@ -16,7 +16,7 @@ type SysUser struct {
 	HeaderImg   string         `json:"headerImg" gorm:"default:https://qmplusimg.henrongyi.top/gva_header.jpg;comment:用户头像"` // 用户头像
 	BaseColor   string         `json:"baseColor" gorm:"default:#fff;comment:基础颜色"`                                           // 基础颜色
 	ActiveColor string         `json:"activeColor" gorm:"default:#1890ff;comment:活跃颜色"`                                      // 活跃颜色
-	AuthorityId uint           `json:"authorityId" gorm:"default:888;comment:用户角色ID"`                                        // 用户角色ID
+	AuthorityId string         `json:"authorityId" gorm:"default:888;comment:用户角色ID"`                                        // 用户角色ID
 	Authority   SysAuthority   `json:"authority" gorm:"foreignKey:AuthorityId;references:AuthorityId;comment:用户角色"`
 	Authorities []SysAuthority `json:"authorities" gorm:"many2many:sys_user_authority;"`
 	Phone       string         `json:"phone"  gorm:"comment:用户手机号"`                     // 用户手机号
@@ -30,7 +30,7 @@ func (SysUser) TableName() string {
 
 type Users struct {
 	//global.CMBP_MODEL
-	Id          string `json:"id"`
+	ID          string `json:"id"`
 	Account     int    `json:"account" gorm:"default:NULL;comment:账号"`
 	Password    string `json:"password"`
 	MineCode    string `json:"mine_code"`

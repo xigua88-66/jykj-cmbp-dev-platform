@@ -49,7 +49,7 @@ func (exa *CustomerService) UpdateExaCustomer(e *example.ExaCustomer) (err error
 //@param: id uint
 //@return: customer model.ExaCustomer, err error
 
-func (exa *CustomerService) GetExaCustomer(id uint) (customer example.ExaCustomer, err error) {
+func (exa *CustomerService) GetExaCustomer(id string) (customer example.ExaCustomer, err error) {
 	err = global.CMBP_DB.Where("id = ?", id).First(&customer).Error
 	return
 }
@@ -60,7 +60,7 @@ func (exa *CustomerService) GetExaCustomer(id uint) (customer example.ExaCustome
 //@param: sysUserAuthorityID string, info request.PageInfo
 //@return: list interface{}, total int64, err error
 
-func (exa *CustomerService) GetCustomerInfoList(sysUserAuthorityID uint, info request.PageInfo) (list interface{}, total int64, err error) {
+func (exa *CustomerService) GetCustomerInfoList(sysUserAuthorityID string, info request.PageInfo) (list interface{}, total int64, err error) {
 	limit := info.PageSize
 	offset := info.PageSize * (info.Page - 1)
 	db := global.CMBP_DB.Model(&example.ExaCustomer{})
@@ -70,7 +70,7 @@ func (exa *CustomerService) GetCustomerInfoList(sysUserAuthorityID uint, info re
 	if err != nil {
 		return
 	}
-	var dataId []uint
+	var dataId []string
 	for _, v := range auth.DataAuthorityId {
 		dataId = append(dataId, v.AuthorityId)
 	}

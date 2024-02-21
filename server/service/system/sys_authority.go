@@ -2,13 +2,11 @@ package system
 
 import (
 	"errors"
-	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
-	"strconv"
-
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/system"
+	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"jykj-cmbp-dev-platform/server/model/system/response"
 )
 
@@ -41,7 +39,7 @@ func (authorityService *AuthorityService) CreateAuthority(auth system.SysAuthori
 			return err
 		}
 		casbinInfos := systemReq.DefaultCasbin()
-		authorityId := strconv.Itoa(int(auth.AuthorityId))
+		authorityId := auth.AuthorityId
 		rules := [][]string{}
 		for _, v := range casbinInfos {
 			rules = append(rules, []string{authorityId, v.Path, v.Method})
@@ -70,8 +68,9 @@ func (authorityService *AuthorityService) CopyAuthority(copyInfo response.SysAut
 	}
 	var baseMenu []system.SysBaseMenu
 	for _, v := range menus {
-		intNum, _ := strconv.Atoi(v.MenuId)
-		v.SysBaseMenu.ID = uint(intNum)
+		//intNum, _ := strconv.Atoi(v.MenuId)
+		//v.SysBaseMenu.ID = uint(intNum)
+		v.SysBaseMenu.ID = v.MenuId
 		baseMenu = append(baseMenu, v.SysBaseMenu)
 	}
 	copyInfo.Authority.SysBaseMenus = baseMenu
@@ -160,7 +159,7 @@ func (authorityService *AuthorityService) DeleteAuthority(auth *system.SysAuthor
 			return err
 		}
 
-		authorityId := strconv.Itoa(int(auth.AuthorityId))
+		authorityId := auth.AuthorityId
 
 		if err = CasbinServiceApp.RemoveFilteredPolicy(tx, authorityId); err != nil {
 			return err

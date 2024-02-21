@@ -1,6 +1,7 @@
 package system
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -81,12 +82,18 @@ func (b *BaseApi) Login(c *gin.Context) {
 // TokenNext 登录以后签发jwt
 func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 	j := &utils.JWT{SigningKey: []byte(global.CMBP_CONFIG.JWT.SigningKey)} // 唯一签名
+	var authorityId string
+	err := global.CMBP_DB.Model(system.UserRoles{}).Where("user_id = ? ", user.ID).Pluck("role_id", &authorityId).Error
+	if err != nil {
+		response.FailWithMessage("获取角色失败", c)
+		return
+	}
 	claims := j.CreateClaims(systemReq.BaseClaims{
 		//UUID:        user.UUID,
-		//ID:          user.ID,
-		Phone:    user.Phone,
-		Username: user.Username,
-		//AuthorityId: user.AuthorityId,
+		ID:          user.ID,
+		Phone:       user.Phone,
+		Username:    user.Username,
+		AuthorityId: authorityId,
 	})
 	token, err := j.CreateToken(claims)
 	if err != nil {
@@ -196,14 +203,23 @@ func (b *BaseApi) ChangePassword(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+
+	if req.OldPassword == req.NewPassword {
+		response.FailWithMessage("新密码与原密码相同", c)
+		return
+	}
+
 	uid := utils.GetUserID(c)
-	u := &system.SysUser{CMBP_MODEL: global.CMBP_MODEL{ID: uid}, Password: req.Password}
+	u := &system.Users{ID: uid, Password: req.OldPassword}
 	_, err = userService.ChangePassword(u, req.NewPassword)
 	if err != nil {
 		global.CMBP_LOG.Error("修改失败!", zap.Error(err))
 		response.FailWithMessage("修改失败，原密码与当前账户不符", c)
 		return
 	}
+	// 清空当前用户的token
+	utils.ClearToken(c)
+	fmt.Println("清楚完成后的token", utils.GetToken(c))
 	response.OkWithMessage("修改成功", c)
 }
 
@@ -330,7 +346,7 @@ func (b *BaseApi) DeleteUser(c *gin.Context) {
 		return
 	}
 	jwtId := utils.GetUserID(c)
-	if jwtId == uint(reqId.ID) {
+	if jwtId == string(rune(reqId.ID)) {
 		response.FailWithMessage("删除失败, 自杀失败", c)
 		return
 	}

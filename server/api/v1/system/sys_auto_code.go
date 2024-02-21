@@ -62,7 +62,7 @@ func (autoApi *AutoCodeApi) CreateTemp(c *gin.Context) {
 		return
 	}
 	a.Pretreatment()
-	var apiIds []uint
+	var apiIds []string
 	if a.AutoCreateApiToSql {
 		if ids, err := autoCodeService.AutoCreateApi(&a); err != nil {
 			global.CMBP_LOG.Error("自动化创建失败!请自行清空垃圾数据!", zap.Error(err))

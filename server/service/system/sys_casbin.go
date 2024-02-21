@@ -3,7 +3,6 @@ package system
 import (
 	"errors"
 	"gorm.io/gorm"
-	"strconv"
 	"sync"
 
 	"github.com/casbin/casbin/v2"
@@ -25,8 +24,8 @@ type CasbinService struct{}
 
 var CasbinServiceApp = new(CasbinService)
 
-func (casbinService *CasbinService) UpdateCasbin(AuthorityID uint, casbinInfos []request.CasbinInfo) error {
-	authorityId := strconv.Itoa(int(AuthorityID))
+func (casbinService *CasbinService) UpdateCasbin(AuthorityID string, casbinInfos []request.CasbinInfo) error {
+	authorityId := AuthorityID
 	casbinService.ClearCasbin(0, authorityId)
 	rules := [][]string{}
 	//做权限去重处理
@@ -71,9 +70,9 @@ func (casbinService *CasbinService) UpdateCasbinApi(oldPath string, newPath stri
 //@param: authorityId string
 //@return: pathMaps []request.CasbinInfo
 
-func (casbinService *CasbinService) GetPolicyPathByAuthorityId(AuthorityID uint) (pathMaps []request.CasbinInfo) {
+func (casbinService *CasbinService) GetPolicyPathByAuthorityId(AuthorityID string) (pathMaps []request.CasbinInfo) {
 	e := casbinService.Casbin()
-	authorityId := strconv.Itoa(int(AuthorityID))
+	authorityId := AuthorityID
 	list := e.GetFilteredPolicy(0, authorityId)
 	for _, v := range list {
 		pathMaps = append(pathMaps, request.CasbinInfo{
@@ -157,7 +156,8 @@ var (
 
 func (casbinService *CasbinService) Casbin() *casbin.SyncedCachedEnforcer {
 	once.Do(func() {
-		a, err := gormadapter.NewAdapterByDB(global.CMBP_DB)
+		//a, err := gormadapter.NewAdapterByDB(global.CMBP_DB)
+		a, err := gormadapter.NewAdapterByDBUseTableName(global.CMBP_DB, "t", "user_roles")
 		if err != nil {
 			zap.L().Error("适配数据库失败请检查casbin表是否为InnoDB引擎!", zap.Error(err))
 			return

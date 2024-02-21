@@ -47,7 +47,7 @@ func (sysExportTemplateService *SysExportTemplateService) UpdateSysExportTemplat
 
 // GetSysExportTemplate 根据id获取导出模板记录
 // Author [piexlmax](https://github.com/piexlmax)
-func (sysExportTemplateService *SysExportTemplateService) GetSysExportTemplate(id uint) (sysExportTemplate system.SysExportTemplate, err error) {
+func (sysExportTemplateService *SysExportTemplateService) GetSysExportTemplate(id string) (sysExportTemplate system.SysExportTemplate, err error) {
 	err = global.CMBP_DB.Where("id = ?", id).First(&sysExportTemplate).Error
 	return
 }

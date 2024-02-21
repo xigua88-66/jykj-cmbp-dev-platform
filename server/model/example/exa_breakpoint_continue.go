@@ -18,7 +18,7 @@ type ExaFile struct {
 // file chunk struct, 切片结构体
 type ExaFileChunk struct {
 	global.CMBP_MODEL
-	ExaFileID       uint
+	ExaFileID       string
 	FileChunkNumber int
 	FileChunkPath   string
 }

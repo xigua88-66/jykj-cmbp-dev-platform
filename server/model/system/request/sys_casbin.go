@@ -8,7 +8,7 @@ type CasbinInfo struct {
 
 // Casbin structure for input parameters
 type CasbinInReceive struct {
-	AuthorityId uint         `json:"authorityId"` // 权限id
+	AuthorityId string       `json:"authorityId"` // 权限id
 	CasbinInfos []CasbinInfo `json:"casbinInfos"`
 }
 

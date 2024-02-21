@@ -1,7 +1,7 @@
 package request
 
 type SysAuthorityBtnReq struct {
-	MenuID      uint   `json:"menuID"`
-	AuthorityId uint   `json:"authorityId"`
-	Selected    []uint `json:"selected"`
+	MenuID      string   `json:"menuID"`
+	AuthorityId string   `json:"authorityId"`
+	Selected    []string `json:"selected"`
 }

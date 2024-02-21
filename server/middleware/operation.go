@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +33,7 @@ func init() {
 func OperationRecord() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body []byte
-		var userId int
+		var userId string
 		if c.Request.Method != http.MethodGet {
 			var err error
 			body, err = io.ReadAll(c.Request.Body)
@@ -57,12 +56,12 @@ func OperationRecord() gin.HandlerFunc {
 			body, _ = json.Marshal(&m)
 		}
 		claims, _ := utils.GetClaims(c)
-		if claims != nil && claims.BaseClaims.ID != 0 {
-			userId = int(claims.BaseClaims.ID)
+		if claims != nil && claims.BaseClaims.ID != "0" {
+			userId = claims.BaseClaims.ID
 		} else {
-			id, err := strconv.Atoi(c.Request.Header.Get("x-user-id"))
-			if err != nil {
-				userId = 0
+			id := c.Request.Header.Get("x-user-id")
+			if id == "" {
+				id = "0"
 			}
 			userId = id
 		}

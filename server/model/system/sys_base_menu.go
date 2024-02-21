@@ -31,7 +31,7 @@ type Meta struct {
 
 type SysBaseMenuParameter struct {
 	global.CMBP_MODEL
-	SysBaseMenuID uint
+	SysBaseMenuID string
 	Type          string `json:"type" gorm:"comment:地址栏携带参数为params还是query"` // 地址栏携带参数为params还是query
 	Key           string `json:"key" gorm:"comment:地址栏携带参数的key"`            // 地址栏携带参数的key
 	Value         string `json:"value" gorm:"comment:地址栏携带参数的值"`            // 地址栏携带参数的值

@@ -17,7 +17,7 @@ func (a *AuthorityBtnService) GetAuthorityBtn(req request.SysAuthorityBtnReq) (r
 	if err != nil {
 		return
 	}
-	var selected []uint
+	var selected []string
 	for _, v := range authorityBtn {
 		selected = append(selected, v.SysBaseMenuBtnID)
 	}

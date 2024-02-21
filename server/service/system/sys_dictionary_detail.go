@@ -47,7 +47,7 @@ func (dictionaryDetailService *DictionaryDetailService) UpdateSysDictionaryDetai
 //@param: id uint
 //@return: sysDictionaryDetail system.SysDictionaryDetail, err error
 
-func (dictionaryDetailService *DictionaryDetailService) GetSysDictionaryDetail(id uint) (sysDictionaryDetail system.SysDictionaryDetail, err error) {
+func (dictionaryDetailService *DictionaryDetailService) GetSysDictionaryDetail(id string) (sysDictionaryDetail system.SysDictionaryDetail, err error) {
 	err = global.CMBP_DB.Where("id = ?", id).First(&sysDictionaryDetail).Error
 	return
 }
