@@ -232,10 +232,10 @@ func (userService *UserService) SetSelfInfo(req system.SysUser) error {
 
 func (userService *UserService) GetUserInfo(uuid uuid.UUID) (user system.Users, err error) {
 	var reqUser system.Users
-	err = global.CMBP_DB.Preload("Authorities").Preload("Authority").First(&reqUser, "uuid = ?", uuid).Error
-	if err != nil {
-		return reqUser, err
-	}
+	//err = global.CMBP_DB.Preload("Authorities").Preload("Authority").First(&reqUser, "uuid = ?", uuid).Error
+	//if err != nil {
+	//	return reqUser, err
+	//}
 	MenuServiceApp.UserAuthorityDefaultRouter(&reqUser)
 	return reqUser, err
 }

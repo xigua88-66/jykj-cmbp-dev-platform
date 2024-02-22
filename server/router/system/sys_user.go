@@ -3,7 +3,6 @@ package system
 import (
 	"github.com/gin-gonic/gin"
 	v1 "jykj-cmbp-dev-platform/server/api/v1"
-	//"jykj-cmbp-dev-platform/server/middleware"
 )
 
 type UserRouter struct{}
@@ -23,6 +22,9 @@ func (s *UserRouter) InitUserRouter(Router *gin.RouterGroup) {
 		userRouter.PUT("setSelfInfo", baseApi.SetSelfInfo)                // 设置自身信息
 		userRouter.POST("setUserAuthorities", baseApi.SetUserAuthorities) // 设置用户权限组
 		userRouter.POST("resetPassword", baseApi.ResetPassword)           // 设置用户权限组
+
+		//userRouter.GET("v1.5/user_menus", baseApi.UserMenus) // 设置用户权限组
+
 	}
 	{
 		userRouterWithoutRecord.POST("getUserList", baseApi.GetUserList) // 分页获取用户列表

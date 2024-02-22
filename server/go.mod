@@ -7,7 +7,6 @@ require (
 	github.com/aws/aws-sdk-go v1.44.307
 	github.com/casbin/casbin/v2 v2.71.1
 	github.com/casbin/gorm-adapter/v3 v3.18.0
-	github.com/flipped-aurora/gin-vue-admin/server v0.0.0-20240219024838-5b9a7e6a2a5c
 	github.com/flipped-aurora/ws v1.0.2
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/fvbock/endless v0.0.0-20170109170031-447134032cb6

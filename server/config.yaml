@@ -3,7 +3,7 @@
 # jwt configuration
 jwt:
   signing-key: qmPlus
-  expires-time: 7d
+  expires-time: 3d
   buffer-time: 1d
   issuer: qmPlus
 # zap logger configuration
@@ -19,9 +19,9 @@ zap:
 
 # redis configuration
 redis:
-  db: 0
-  addr: 127.0.0.1:6379
-  password: ""
+  db: 14
+  addr: 172.24.3.26:6379
+  password: "password01!"
 
 # mongo configuration
 mongo:
@@ -58,13 +58,13 @@ system:
   oss-type: local # 控制oss选择走本地还是 七牛等其他仓 自行增加其他oss仓可以在 server/utils/upload/upload.go 中 NewOss函数配置
   use-redis: false # 使用redis
   use-mongo: false     # 使用mongo
-  use-multipoint: false
+  use-multipoint: true
   # IP限制次数 一个小时15000次
   iplimit-count: 15000
   #  IP限制一个小时
   iplimit-time: 3600
   #  路由全局前缀
-  router-prefix: "/cmbp/api"
+  router-prefix: ""
 
 # captcha configuration
 captcha:
@@ -77,12 +77,12 @@ captcha:
 # mysql connect configuration
 # 未初始化之前请勿手动修改数据库信息！！！如果一定要手动初始化请看（https://gin-vue-admin.com/docs/first_master）
 mysql:
-  path: "172.24.3.26"
+  path: "39.107.100.191"
   port: "3306"
   config: "charset=utf8mb4&parseTime=True&loc=Local"
   db-name: "cmbp"
   username: "root"
-  password: "JYKJjykj123!@#213"
+  password: "openIM"
   max-idle-conns: 10
   max-open-conns: 100
   log-mode: ""

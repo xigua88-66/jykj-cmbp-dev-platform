@@ -101,6 +101,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 		response.FailWithMessage("获取token失败", c)
 		return
 	}
+	// 不允许多点登录
 	if !global.CMBP_CONFIG.System.UseMultipoint {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
@@ -219,7 +220,8 @@ func (b *BaseApi) ChangePassword(c *gin.Context) {
 	}
 	// 清空当前用户的token
 	utils.ClearToken(c)
-	fmt.Println("清楚完成后的token", utils.GetToken(c))
+	_ = jwtService.JsonInBlacklist(system.JwtBlacklist{Jwt: utils.GetToken(c)})
+	fmt.Println("清除完成后的token", utils.GetToken(c))
 	response.OkWithMessage("修改成功", c)
 }
 
