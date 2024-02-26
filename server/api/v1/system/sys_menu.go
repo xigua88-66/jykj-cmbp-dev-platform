@@ -23,17 +23,50 @@ type AuthorityMenuApi struct{}
 // @Param     data  body      request.Empty                                                  true  "空"
 // @Success   200   {object}  response.Response{data=systemRes.SysMenusResponse,msg=string}  "获取用户动态路由,返回包括系统菜单详情列表"
 // @Router    /menu/getMenu [post]
-func (a *AuthorityMenuApi) GetMenu(c *gin.Context) {
-	menus, err := menuService.GetMenuTree(utils.GetUserAuthorityId(c))
+//func (a *AuthorityMenuApi) GetMenu(c *gin.Context) {
+//	menus, err := menuService.GetUserMenu(utils.GetUserAuthorityId(c))
+//	if err != nil {
+//		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
+//		response.FailWithMessage("获取失败", c)
+//		return
+//	}
+//	if menus == nil {
+//		menus = []system.SysMenu{}
+//	}
+//	response.OkWithDetailed(systemRes.SysMenusResponse{Menus: menus}, "获取成功", c)
+//}
+
+func (a *AuthorityMenuApi) GetUserMenus(c *gin.Context) {
+	menusName := c.Query("menus_name")
+	//if err != nil {
+	//	response.FailWithMessage(err.Error(), c)
+	//	return
+	//}
+	role_id := utils.GetUserAuthorityId(c)
+	menus, err := menuService.GetUserMenu(menusName, role_id)
 	if err != nil {
 		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
 		return
 	}
-	if menus == nil {
-		menus = []system.SysMenu{}
+	//if menus == nil {
+	//	menus = []system.SysMenu{}
+	//}
+	response.OkWithDetailed(menus, "获取成功", c)
+}
+
+func (a *AuthorityMenuApi) GetMenus(c *gin.Context) {
+	flag := c.Query("flag")
+	menu_id := c.Query("menu_id")
+
+	//role_id := utils.GetUserAuthorityId(c)
+	menus, err := menuService.GetMenuTree(flag, menu_id)
+	if err != nil {
+		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
+		response.FailWithMessage("获取失败", c)
+		return
 	}
-	response.OkWithDetailed(systemRes.SysMenusResponse{Menus: menus}, "获取成功", c)
+	response.OkWithDetailed(menus, "获取成功", c)
 }
 
 // GetBaseMenuTree

@@ -230,14 +230,59 @@ func (userService *UserService) SetSelfInfo(req system.SysUser) error {
 //@param: uuid uuid.UUID
 //@return: err error, user system.SysUser
 
-func (userService *UserService) GetUserInfo(uuid uuid.UUID) (user system.Users, err error) {
+func (userService *UserService) GetUserInfo(uid string, userId string) (user map[string]interface{}, err error) {
 	var reqUser system.Users
-	//err = global.CMBP_DB.Preload("Authorities").Preload("Authority").First(&reqUser, "uuid = ?", uuid).Error
-	//if err != nil {
-	//	return reqUser, err
-	//}
-	MenuServiceApp.UserAuthorityDefaultRouter(&reqUser)
-	return reqUser, err
+	var roleObj system.Roles
+	var role = ""
+
+	if userId != "" {
+		err = global.CMBP_DB.Model(system.Users{}).Where("id = ?", userId).First(&reqUser).Error
+		global.CMBP_DB.Model(system.Roles{}).Joins("JOIN t_user_roles on t_roles_info.id=t_user_roles.role_id").Where("t_user_roles.user_id = ?", userId).First(&roleObj)
+	} else {
+		err = global.CMBP_DB.Model(system.Users{}).Where("id = ?", uid).First(&reqUser).Error
+		global.CMBP_DB.Model(system.Roles{}).Joins("JOIN t_user_roles on t_roles_info.id=t_user_roles.role_id").Where("t_user_roles.user_id = ?", uid).First(&roleObj)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	switch roleObj.Name {
+	case "ROOT":
+		role = "管理员"
+	case "MODEL", "LABLE":
+		role = "开发者"
+	case "ADMIN":
+		role = "企业用户"
+	default:
+		role = roleObj.RoleName
+	}
+	var mine system.MineRegistry
+	err = global.CMBP_DB.Model(system.MineRegistry{}).Where("mine_code = ?", reqUser.MineCode).First(&mine).Error
+
+	var expireTime string
+	var lastDays = 99999
+	if !reqUser.ExpireTime.IsZero() {
+		expireTime = reqUser.ExpireTime.Format("2006-01-02 15:04:05") // 格式化时间或者以你需要的方式使用
+		now := time.Now()
+		duration := reqUser.ExpireTime.Sub(now)
+		lastDays = int(duration.Hours() / 24)
+	} else {
+		expireTime = ""
+	}
+	rspUser := map[string]interface{}{
+		"username":      reqUser.Username,
+		"role":          role,
+		"mine":          mine.MineShortname,
+		"phone":         reqUser.Phone,
+		"emial":         reqUser.Email,
+		"expire_time":   expireTime,
+		"last_days":     lastDays,
+		"mine_code":     reqUser.MineCode,
+		"ding_account":  reqUser.DingAccount,
+		"register_time": reqUser.CreateTime.Format("2006-01-02 15:04:05"),
+	}
+	return rspUser, err
+
 }
 
 //@author: [SliverHorn](https://github.com/SliverHorn)

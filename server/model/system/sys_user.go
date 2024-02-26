@@ -53,3 +53,23 @@ type Users struct {
 func (Users) TableName() string {
 	return "t_user_info"
 }
+
+type MineRegistry struct {
+	MineCode        string    `json:"mine_code"`
+	MineFullname    string    `json:"mine_fullname"`
+	MineShortname   string    `json:"mine_shortname"`
+	MineCapacity    int       `json:"mine_capacity"`
+	MinePersonTotal int       `json:"mine_person_total"`
+	UserFlag        bool      `json:"user_flag"`
+	VerifyFlag      int       `json:"verify_flag"`
+	Email           string    `json:"email"`
+	Phone           string    `json:"phone"`
+	Longitude       float32   `json:"longitude"`
+	Latitude        float32   `json:"latitude"`
+	CreateTime      time.Time `json:"create_time"`
+	UpdateTime      time.Time `json:"update_time"`
+}
+
+func (MineRegistry) TableName() string {
+	return "t_mine_register"
+}

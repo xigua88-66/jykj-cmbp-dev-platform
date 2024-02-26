@@ -1,11 +1,13 @@
 package system
 
 import (
+	"encoding/json"
 	"errors"
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/system"
+	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -18,70 +20,118 @@ type MenuService struct{}
 
 var MenuServiceApp = new(MenuService)
 
-func (menuService *MenuService) getMenuTreeMap(authorityId string) (treeMap map[string][]system.SysMenu, err error) {
-	var allMenus []system.SysMenu
-	var baseMenu []system.SysBaseMenu
-	var btns []system.SysAuthorityBtn
-	treeMap = make(map[string][]system.SysMenu)
+func (menuService *MenuService) getMenuTreeMap(menusName string, roleId string) (treeMap systemRsp.MenusList, err error) {
+	//var allMenus []system.SysMenu
+	//var baseMenu []system.SysBaseMenu
+	//var btns []system.SysAuthorityBtn
+	var allmenusList []systemRsp.MenusDetail
+	var allbuttonList []systemRsp.ButtonDetail
 
-	var SysAuthorityMenus []system.SysAuthorityMenu
-	err = global.CMBP_DB.Where("sys_authority_authority_id = ?", authorityId).Find(&SysAuthorityMenus).Error
-	if err != nil {
-		return
-	}
+	//treeMap = make(map[string][]system.SysMenu)
+	//
+	//var SysAuthorityMenus []system.SysAuthorityMenu
 
-	var MenuIds []string
+	var QUERY = global.CMBP_DB.Model(&system.Menus{})
+	var lastMenus system.Menus
 
-	for i := range SysAuthorityMenus {
-		MenuIds = append(MenuIds, SysAuthorityMenus[i].MenuId)
-	}
-
-	err = global.CMBP_DB.Where("id in (?)", MenuIds).Order("sort").Preload("Parameters").Find(&baseMenu).Error
-	if err != nil {
-		return
-	}
-
-	for i := range baseMenu {
-		allMenus = append(allMenus, system.SysMenu{
-			SysBaseMenu: baseMenu[i],
-			AuthorityId: authorityId,
-			//MenuId:      strconv.Itoa(int(baseMenu[i].ID)),
-			MenuId:     baseMenu[i].ID,
-			Parameters: baseMenu[i].Parameters,
-		})
-	}
-
-	err = global.CMBP_DB.Where("authority_id = ?", authorityId).Preload("SysBaseMenuBtn").Find(&btns).Error
-	if err != nil {
-		return
-	}
-	var btnMap = make(map[string]map[string]string)
-	for _, v := range btns {
-		if btnMap[v.SysMenuID] == nil {
-			btnMap[v.SysMenuID] = make(map[string]string)
+	if menusName != "" {
+		err = QUERY.Where("menus_name = ?", menusName).First(&lastMenus).Error
+		if err != nil {
+			return systemRsp.MenusList{}, err
 		}
-		btnMap[v.SysMenuID][v.SysBaseMenuBtn.Name] = authorityId
 	}
-	for _, v := range allMenus {
-		v.Btns = btnMap[v.SysBaseMenu.ID]
-		treeMap[v.ParentId] = append(treeMap[v.ParentId], v)
+
+	var buttonList []system.Menus
+	var menuList []system.Menus
+
+	if lastMenus.LastMenu != "" {
+		err = QUERY.Where("type = ?", 2).Where("last_menu = ?", lastMenus.LastMenu).Order("create_time").Find(&menuList).Error
+		if err != nil {
+			return systemRsp.MenusList{}, err
+		}
+		err = global.CMBP_DB.Model(&system.Menus{}).Where("type = ?", 3).Where("last_menu = ?", lastMenus.LastMenu).Order("create_time").Find(&buttonList).Error
+		if err != nil {
+			return systemRsp.MenusList{}, err
+		}
+	} else {
+		err = QUERY.Where("type = ?", 2).Order("create_time").Find(&menuList).Error
+		if err != nil {
+			return systemRsp.MenusList{}, err
+		}
+		err = global.CMBP_DB.Model(&system.Menus{}).Where("type = ?", 3).Order("create_time").Find(&buttonList).Error
+		if err != nil {
+			return systemRsp.MenusList{}, err
+		}
 	}
-	return treeMap, err
+
+	var roleName string
+	err = global.CMBP_DB.Model(system.Roles{}).Where("id = ? ", roleId).Pluck("name", &roleName).Error
+	if err != nil {
+		return systemRsp.MenusList{}, err
+	}
+
+	for _, menu := range menuList {
+		var roleList []string
+		json.Unmarshal([]byte(menu.RoleList), &roleList)
+		for _, role := range roleList {
+			if roleName == role {
+				menuDetail := systemRsp.MenusDetail{
+					MenuID:      menu.ID,
+					Type:        menu.Type,
+					Name:        menu.Name,
+					Url:         menu.Url,
+					AssemblyUrl: menu.AssemblyUrl,
+					Icon:        menu.Icon,
+					IsRouting:   menu.IsRouting,
+				}
+				allmenusList = append(allmenusList, menuDetail)
+			}
+		}
+	}
+
+	for _, button := range buttonList {
+		var roleList []string
+		json.Unmarshal([]byte(button.RoleList), &roleList)
+		for _, role := range roleList {
+			if roleName == role {
+				buttonDetail := systemRsp.ButtonDetail{
+					MenuID:      button.ID,
+					Type:        button.Type,
+					Name:        button.Name,
+					Url:         button.Url,
+					AssemblyUrl: button.AssemblyUrl,
+					Icon:        button.Icon,
+					IsRouting:   button.IsRouting,
+				}
+				allbuttonList = append(allbuttonList, buttonDetail)
+			}
+		}
+	}
+	return systemRsp.MenusList{Button: allbuttonList, Menus: allmenusList}, err
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
-//@function: GetMenuTree
+//@function: GetUserMenu
 //@description: 获取动态菜单树
 //@param: authorityId string
 //@return: menus []system.SysMenu, err error
 
-func (menuService *MenuService) GetMenuTree(authorityId string) (menus []system.SysMenu, err error) {
-	menuTree, err := menuService.getMenuTreeMap(authorityId)
-	menus = menuTree["0"]
-	for i := 0; i < len(menus); i++ {
-		err = menuService.getChildrenList(&menus[i], menuTree)
-	}
-	return menus, err
+func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (menus systemRsp.MenusList, err error) {
+	menuTree, err := menuService.getMenuTreeMap(menusName, roleId)
+	//menus = menuTree["0"]
+	//for i := 0; i < len(menus); i++ {
+	//	err = menuService.getChildrenList(&menus[i], menuTree)
+	//}
+	return menuTree, err
+}
+
+func (menuService *MenuService) GetMenuTree(menu_id string, roleId string) (menus systemRsp.MenusList, err error) {
+	menuTree, err := menuService.getMenuTreeMap(menu_id, roleId)
+	//menus = menuTree["0"]
+	//for i := 0; i < len(menus); i++ {
+	//	err = menuService.getChildrenList(&menus[i], menuTree)
+	//}
+	return menuTree, err
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)

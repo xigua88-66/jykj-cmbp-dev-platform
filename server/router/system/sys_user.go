@@ -23,7 +23,7 @@ func (s *UserRouter) InitUserRouter(Router *gin.RouterGroup) {
 		userRouter.POST("setUserAuthorities", baseApi.SetUserAuthorities) // 设置用户权限组
 		userRouter.POST("resetPassword", baseApi.ResetPassword)           // 设置用户权限组
 
-		//userRouter.GET("v1.5/user_menus", baseApi.UserMenus) // 设置用户权限组
+		userRouter.GET("v1.4/user_info", baseApi.GetUserInfo) // 获取用户信息
 
 	}
 	{

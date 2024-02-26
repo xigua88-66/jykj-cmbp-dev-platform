@@ -25,3 +25,7 @@ func DefaultMenu() []system.SysBaseMenu {
 		},
 	}}
 }
+
+type MenusName struct {
+	MenusName string `json:"menus_name"`
+}

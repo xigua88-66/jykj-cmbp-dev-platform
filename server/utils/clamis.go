@@ -6,6 +6,7 @@ import (
 	"jykj-cmbp-dev-platform/server/global"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"net"
+	"strings"
 )
 
 func ClearToken(c *gin.Context) {
@@ -15,6 +16,7 @@ func ClearToken(c *gin.Context) {
 		host = c.Request.Host
 	}
 	c.SetCookie("x-token", "", -1, "/", host, true, false)
+	c.SetCookie("Authorization", "", -1, "/", host, true, false)
 }
 
 func SetToken(c *gin.Context, token string, maxAge int) {
@@ -24,12 +26,20 @@ func SetToken(c *gin.Context, token string, maxAge int) {
 		host = c.Request.Host
 	}
 	c.SetCookie("x-token", token, maxAge, "/", host, true, false)
+	//c.SetCookie(" Authorization", "Bearer "+token, maxAge, "/", host, true, false)
 }
 
 func GetToken(c *gin.Context) string {
-	token, _ := c.Cookie("x-token")
+	//token, _ := c.Cookie("x-token")
+	//if token == "" {
+	//	token = c.Request.Header.Get("x-token")
+	//}
+	token, _ := c.Cookie("Authorization")
 	if token == "" {
-		token = c.Request.Header.Get("x-token")
+		token = c.Request.Header.Get("Authorization")
+	}
+	if strings.Contains(token, "Bearer") {
+		token = token[7:]
 	}
 	return token
 }

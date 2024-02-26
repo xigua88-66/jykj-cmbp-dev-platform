@@ -57,7 +57,7 @@ func (b *BaseApi) Login(c *gin.Context) {
 		if err != nil {
 			if strings.Contains(err.Error(), "最后一次登录") {
 				global.CMBP_LOG.Warn("用户过期，最后一次登录", zap.Error(err))
-				b.TokenNext(c, *user)
+				b.TokenNext(c, *user, 1)
 				return
 			}
 			global.CMBP_LOG.Error(err.Error(), zap.Error(err))
@@ -73,17 +73,19 @@ func (b *BaseApi) Login(c *gin.Context) {
 			response.FailWithMessage(err.Error(), c)
 			return
 		}
-		b.TokenNext(c, *user)
+		b.TokenNext(c, *user, 0)
 		return
 	}
 
 }
 
 // TokenNext 登录以后签发jwt
-func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
+func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 	j := &utils.JWT{SigningKey: []byte(global.CMBP_CONFIG.JWT.SigningKey)} // 唯一签名
-	var authorityId string
-	err := global.CMBP_DB.Model(system.UserRoles{}).Where("user_id = ? ", user.ID).Pluck("role_id", &authorityId).Error
+	//var authorityId string
+	var role system.Roles
+	//err := global.CMBP_DB.Model(system.UserRoles{}).Where("user_id = ? ", user.ID).Pluck("role_id", &authorityId).Error
+	err := global.CMBP_DB.Model(system.Roles{}).Joins("JOIN t_user_roles ON t_user_roles.role_id=t_roles_info.id").Where("t_user_roles.user_id = ? ", user.ID).Find(&role).Error
 	if err != nil {
 		response.FailWithMessage("获取角色失败", c)
 		return
@@ -93,7 +95,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 		ID:          user.ID,
 		Phone:       user.Phone,
 		Username:    user.Username,
-		AuthorityId: authorityId,
+		AuthorityId: role.Id,
 	})
 	token, err := j.CreateToken(claims)
 	if err != nil {
@@ -107,8 +109,8 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 		response.OkWithDetailed(systemRes.LoginResponse{
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
-			Role:      "ROOT",
-			IsExpire:  0,
+			Role:      role.Name,
+			IsExpire:  isExpire,
 			IsCloud:   true,
 		}, "登录成功", c)
 		return
@@ -123,6 +125,9 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
 			//User:      user,
+			Role:      role.Name,
+			IsExpire:  isExpire,
+			IsCloud:   true,
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
 		}, "登录成功", c)
@@ -143,6 +148,9 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users) {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		response.OkWithDetailed(systemRes.LoginResponse{
 			//User:      user,
+			Role:      role.Name,
+			IsExpire:  isExpire,
+			IsCloud:   true,
 			Token:     token,
 			ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
 		}, "登录成功", c)
@@ -455,14 +463,16 @@ func (b *BaseApi) SetSelfInfo(c *gin.Context) {
 // @Success   200  {object}  response.Response{data=map[string]interface{},msg=string}  "获取用户信息"
 // @Router    /user/getUserInfo [get]
 func (b *BaseApi) GetUserInfo(c *gin.Context) {
-	uuid := utils.GetUserUuid(c)
-	ReqUser, err := userService.GetUserInfo(uuid)
+	//uuid := utils.GetUserUuid(c)
+	userId := c.Query("user_id")
+	uid := utils.GetUserID(c)
+	ReqUser, err := userService.GetUserInfo(uid, userId)
 	if err != nil {
 		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
 		return
 	}
-	response.OkWithDetailed(gin.H{"userInfo": ReqUser}, "获取成功", c)
+	response.OkWithDetailed(gin.H(ReqUser), "获取成功", c)
 }
 
 // ResetPassword
