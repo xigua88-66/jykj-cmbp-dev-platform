@@ -14,20 +14,22 @@ type SysBaseMenuBtn struct {
 
 type Menus struct {
 	//global.CMBP_MODEL
-	ID          string    `json:"id" gorm:"primary_key;not null;unique"`
-	Type        int       `json:"type" gorm:"not bull"`
-	Name        string    `json:"name"`
-	Level       int       `json:"level"`
-	OrderID     int       `json:"order_id"`
-	Status      int       `json:"status"`
-	LastMenu    string    `json:"last_menu"`
-	Url         string    `json:"url"`
-	RoleList    string    `json:"role_list"`
-	AssemblyUrl string    `json:"assembly_url"`
-	Icon        string    `json:"icon"`
-	IsRouting   int       `json:"is_routing"`
-	CreateTime  time.Time `json:"create_time"`
-	UpdateTime  time.Time `json:"update_time"`
+	ID          string     `json:"id" gorm:"primary_key;not null;unique"`
+	Type        int        `json:"type,omitempty" gorm:"not bull"`
+	Name        string     `json:"name"`
+	Level       int        `json:"level,omitempty"`
+	OrderID     int        `json:"order_id"`
+	Status      int        `json:"status"`
+	LastMenu    string     `json:"last_menu,omitempty"`
+	Url         string     `json:"url,omitempty"`
+	RoleList    string     `json:"role_list,omitempty"`
+	AssemblyUrl string     `json:"assembly_url,omitempty"`
+	Icon        string     `json:"icon,omitempty"`
+	IsRouting   int        `json:"is_routing,omitempty"`
+	CreateTime  *time.Time `json:"create_time,omitempty"`
+	UpdateTime  *time.Time `json:"update_time,omitempty"`
+	MenuID      string     `json:"menu_id" gorm:"-"`
+	Children    []Menus    `json:"children" gorm:"-"`
 	//Roles       []string  `gorm:"foreignKey:role_id;references:id"`
 }
 

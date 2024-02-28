@@ -25,15 +25,9 @@ type MenuService struct{}
 var MenuServiceApp = new(MenuService)
 
 func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) (treeMap systemRsp.MenusList, err error) {
-	//var allMenus []system.SysMenu
-	//var baseMenu []system.SysBaseMenu
-	//var btns []system.SysAuthorityBtn
+
 	var allmenusList []systemRsp.MenusDetail
 	var allbuttonList []systemRsp.ButtonDetail
-
-	//treeMap = make(map[string][]system.SysMenu)
-	//
-	//var SysAuthorityMenus []system.SysAuthorityMenu
 
 	var QUERY = global.CMBP_DB.Model(&system.Menus{})
 	var lastMenus system.Menus
@@ -116,7 +110,6 @@ func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) 
 
 func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interface{}, err error) {
 
-	//treeMap = make(map[string][]system.MenusItem)
 	flag, err := strconv.Atoi(c.Query("flag"))
 	menu_id := c.Query("menu_id")
 
@@ -161,7 +154,12 @@ func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interfac
 		return
 	}
 	var menusTree []system.MenusItem
-	menuService.GetMenuTree(flag, menus, 0, menusTree, system.MenusItem{})
+	//treeMap = make(map[string][]system.MenusItem)
+
+	menusTree = menuService.GetMenuTree(flag, menus, 0, nil)
+	if menusTree == nil {
+		menusTree = []system.MenusItem{}
+	}
 	return menusTree, err
 }
 
@@ -180,61 +178,151 @@ func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (me
 	return menuTree, err
 }
 
-func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, id int, menusTree []system.MenusItem, menusObj system.MenusItem) {
+func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, id int, menusObj *system.Menus) (menusTree []system.MenusItem) {
 
-	var childs []system.MenusItem
-	for _, m := range menuList {
-		var menusItem system.MenusItem
-		id++
-		menusItem.MenuID = m.ID
-		menusItem.ID = id
-		menusItem.Name = m.Name
-		menusItem.OrderID = m.OrderID
-		menusItem.Status = m.Status
-		menusItem.Children = []system.MenusItem{}
-		if m.LastMenu == "" {
-			menusItem.Icon = m.Icon
-			if flag == 2 {
-				menusItem.URL = m.Url
-			} else if flag != 1 {
-				menusItem.Type = m.Type
-				menusItem.AssemblyUrl = m.AssemblyUrl
-				menusItem.RoleList = m.RoleList
-				menusItem.IsRouting = m.IsRouting
-			}
-			childs = append(childs, menusItem)
-			menusTree = append(menusTree, menusItem)
-		} else {
-			if m.LastMenu == menusObj.MenuID {
+	//var childs []system.Menus
+	//var menusTree []system.Menus
+	//
+	//
+	//for _, m := range menuList {
+	//	var menusItem system.Menus
+	//	id++
+	//	menusItem.MenuID = m.ID
+	//	menusItem.ID = strconv.Itoa(id)
+	//	menusItem.Name = m.Name
+	//	menusItem.OrderID = m.OrderID
+	//	menusItem.Status = m.Status
+	//	menusItem.Children = []system.Menus{}
+	//	if menusObj == nil {
+	//		if m.LastMenu == "" {
+	//			menusItem.Icon = m.Icon
+	//			if flag == 2 {
+	//				menusItem.Url = m.Url
+	//			} else if flag != 1 {
+	//				menusItem.Type = m.Type
+	//				menusItem.AssemblyUrl = m.AssemblyUrl
+	//				menusItem.RoleList = m.RoleList
+	//				menusItem.IsRouting = m.IsRouting
+	//			}
+	//			childs = append(childs, menusItem)
+	//			menusTree = append(menusTree, menusItem)
+	//		}
+	//	} else {
+	//		if m.LastMenu == menusObj.MenuID {
+	//			if flag == 2 {
+	//				menusItem.Url = m.Url
+	//			}
+	//			if flag == 0 {
+	//				menusItem.Url = m.Url
+	//				menusItem.Type = m.Type
+	//				menusItem.AssemblyUrl = m.AssemblyUrl
+	//				menusItem.RoleList = m.RoleList
+	//				menusItem.IsRouting = m.IsRouting
+	//			}
+	//			childs = append(childs, menusItem)
+	//			menusObj.Children = append(menusObj.Children, menusItem)
+	//		}
+	//	}
+	//}
+	//if menusObj == nil {
+	//	sort.Slice(menusTree, func(i, j int) bool {
+	//		return menusTree[i].OrderID < menusTree[j].OrderID
+	//	})
+	//} else {
+	//	sort.Slice(menusObj.Children, func(i, j int) bool {
+	//		return menusObj.Children[i].OrderID < menusObj.Children[j].OrderID
+	//	})
+	//}
+	//for _, child := range childs {
+	//	id += len(menuList)
+	//	childChildren := menuService.GetMenuTree(flag, menuList, id, &child)
+	//	if len(childChildren) > 0 {
+	//		child.Children = childChildren
+	//		menusTree = append(menusTree, child)
+	//	}
+	//}
+	////if menusObj != nil {
+	////	return nil
+	////}
+	//return menusTree
+
+	var menusItem system.MenusItem
+
+	if menusObj == nil {
+		for _, m := range menuList {
+			if m.LastMenu == "" {
+				id++
+				menusItem.MenuID = m.ID
+				menusItem.ID = id
+				menusItem.Name = m.Name
+				menusItem.OrderID = m.OrderID
+				menusItem.Status = m.Status
+				menusItem.Children = []system.MenusItem{}
+				menusItem.Icon = m.Icon
 				if flag == 2 {
-					menusItem.URL = m.Url
-				}
-				if flag == 0 {
-					menusItem.URL = m.Url
+					menusItem.Url = m.Url
+				} else if flag != 1 {
+					menusItem.Url = m.Url
 					menusItem.Type = m.Type
 					menusItem.AssemblyUrl = m.AssemblyUrl
 					menusItem.RoleList = m.RoleList
 					menusItem.IsRouting = m.IsRouting
 				}
-				childs = append(childs, menusItem)
-				menusObj.Children = append(menusObj.Children, menusItem)
+				menusItem.Children = menuService.GetMenuTree(flag, menuList, id, &m)
+				if menusItem.Children == nil {
+					menusItem.Children = []system.MenusItem{}
+				}
+				menusTree = append(menusTree, menusItem)
+			}
+		}
+	} else {
+		for _, m := range menuList {
+			if menusObj.ID != "" && m.LastMenu == menusObj.ID {
+				id++
+				menusItem.MenuID = m.ID
+				menusItem.ID = id
+				menusItem.Name = m.Name
+				menusItem.OrderID = m.OrderID
+				menusItem.Status = m.Status
+				menusItem.Children = []system.MenusItem{}
+				if flag == 2 {
+					menusItem.Url = m.Url
+				}
+				if flag == 0 {
+					if m.Type == 1 {
+						menusItem.Icon = m.Icon
+					}
+					menusItem.Url = m.Url
+					menusItem.Type = m.Type
+					menusItem.AssemblyUrl = m.AssemblyUrl
+					menusItem.RoleList = m.RoleList
+					menusItem.IsRouting = m.IsRouting
+				} else {
+					if m.Type == 1 {
+						menusItem.Icon = m.Icon
+						if flag == 2 {
+							menusItem.Url = m.Url
+						}
+					} else {
+						if flag == 2 {
+							menusItem.Url = m.Url
+						}
+					}
+				}
+				menusItem.Children = menuService.GetMenuTree(flag, menuList, id, &m)
+				if menusItem.Children == nil {
+					menusItem.Children = []system.MenusItem{}
+				}
+				menusTree = append(menusTree, menusItem)
 			}
 		}
 	}
-	if menusObj.MenuID == "" {
-		sort.Slice(menusTree, func(i, j int) bool {
-			return menusTree[i].OrderID < menusTree[j].OrderID
-		})
-	} else {
-		sort.Slice(menusObj.Children, func(i, j int) bool {
-			return menusObj.Children[i].OrderID < menusObj.Children[j].OrderID
-		})
-	}
-	for _, child := range childs {
-		id += len(menuList)
-		//id += len(child.Children)
-		menuService.GetMenuTree(flag, menuList, id, menusTree, child)
-	}
+
+	sort.Slice(menusTree, func(i, j int) bool {
+		return menusTree[i].OrderID < menusTree[j].OrderID
+	})
+
+	return menusTree
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)

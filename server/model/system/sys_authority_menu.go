@@ -40,7 +40,7 @@ type MenusItem struct {
 	Name        string      `json:"name"`
 	OrderID     int         `json:"order_id"`
 	Status      int         `json:"status"`
-	URL         string      `json:"url,omitempty"`
+	Url         string      `json:"url,omitempty"`
 	Type        int         `json:"type,omitempty"`
 	RoleList    string      `json:"role_list,omitempty"`
 	AssemblyUrl string      `json:"assembly_url,omitempty"`
