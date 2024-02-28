@@ -1,6 +1,8 @@
 package system
 
 import (
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/common/response"
@@ -8,9 +10,6 @@ import (
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	systemRes "jykj-cmbp-dev-platform/server/model/system/response"
 	"jykj-cmbp-dev-platform/server/utils"
-
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type AuthorityMenuApi struct{}
@@ -56,11 +55,9 @@ func (a *AuthorityMenuApi) GetUserMenus(c *gin.Context) {
 }
 
 func (a *AuthorityMenuApi) GetMenus(c *gin.Context) {
-	flag := c.Query("flag")
-	menu_id := c.Query("menu_id")
 
 	//role_id := utils.GetUserAuthorityId(c)
-	menus, err := menuService.GetMenuTree(flag, menu_id)
+	menus, err := menuService.GetMenuTreeMap(c)
 	if err != nil {
 		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)

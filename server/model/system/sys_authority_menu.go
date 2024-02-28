@@ -20,6 +20,33 @@ func (s SysAuthorityMenu) TableName() string {
 	return "sys_authority_menus"
 }
 
+type MenusByID struct {
+	Type        int    `json:"type"`
+	Icon        string `json:"icon"`
+	MenuID      string `json:"menu_id"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	LastMenu    string `json:"last_menu"`
+	RoleList    string `json:"role_list"`
+	AssemblyUrl string `json:"assembly_url"`
+	IsRouting   int    `json:"is_routing"`
+}
+
+type MenusItem struct {
+	Children    []MenusItem `json:"children"`
+	Icon        string      `json:"icon,omitempty"` // omitempty 表示如果字段为空，则在JSON中省略
+	ID          int         `json:"id"`
+	MenuID      string      `json:"menu_id"`
+	Name        string      `json:"name"`
+	OrderID     int         `json:"order_id"`
+	Status      int         `json:"status"`
+	URL         string      `json:"url,omitempty"`
+	Type        int         `json:"type,omitempty"`
+	RoleList    string      `json:"role_list,omitempty"`
+	AssemblyUrl string      `json:"assembly_url,omitempty"`
+	IsRouting   int         `json:"is_routing,omitempty"`
+}
+
 type RoleMenus struct {
 	Id         string    `json:"id"`
 	RoleId     string    `json:"role_id"`

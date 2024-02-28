@@ -3,15 +3,19 @@ package system
 import (
 	"encoding/json"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
+	"jykj-cmbp-dev-platform/server/utils"
+	"sort"
+	"strconv"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)
-//@function: getMenuTreeMap
+//@function: getUserMenuMap
 //@description: 获取路由总树map
 //@param: authorityId string
 //@return: treeMap map[string][]system.SysMenu, err error
@@ -20,7 +24,7 @@ type MenuService struct{}
 
 var MenuServiceApp = new(MenuService)
 
-func (menuService *MenuService) getMenuTreeMap(menusName string, roleId string) (treeMap systemRsp.MenusList, err error) {
+func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) (treeMap systemRsp.MenusList, err error) {
 	//var allMenus []system.SysMenu
 	//var baseMenu []system.SysBaseMenu
 	//var btns []system.SysAuthorityBtn
@@ -110,6 +114,57 @@ func (menuService *MenuService) getMenuTreeMap(menusName string, roleId string) 
 	return systemRsp.MenusList{Button: allbuttonList, Menus: allmenusList}, err
 }
 
+func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interface{}, err error) {
+
+	//treeMap = make(map[string][]system.MenusItem)
+	flag, err := strconv.Atoi(c.Query("flag"))
+	menu_id := c.Query("menu_id")
+
+	if menu_id != "" {
+		var menus system.Menus
+		err = global.CMBP_DB.Model(&system.Menus{}).Where("t_menus_info.id = ?", menu_id).Find(&menus).Error
+		if err != nil {
+			return
+		}
+		var roleList []string
+		json.Unmarshal([]byte(menus.RoleList), &roleList)
+		//if err != nil {
+		//	return
+		//}
+		var roleIdList []string
+		for _, role := range roleList {
+			var roleId string
+			global.CMBP_DB.Model(system.Roles{}).Where("t_roles_info.name = ?", role).Pluck("t_roles_info.id", &roleId)
+			roleIdList = append(roleIdList, roleId)
+		}
+		var menusByID system.MenusByID
+		menusByID.MenuID = menus.ID
+		menusByID.Type = menus.Type
+		menusByID.Name = menus.Name
+		menusByID.LastMenu = menus.LastMenu
+		menusByID.URL = menus.Url
+		menusByID.RoleList = menus.RoleList
+		menusByID.AssemblyUrl = menus.AssemblyUrl
+		menusByID.Icon = menus.Icon
+		menusByID.IsRouting = menus.IsRouting
+
+		return menusByID, nil
+	}
+	var menus []system.Menus
+	if flag == 1 || flag == 0 {
+		err = global.CMBP_DB.Model(&system.Menus{}).Order("create_time").Find(&menus).Error
+	} else if flag == 2 {
+		var roleId = utils.GetUserAuthorityId(c)
+		err = global.CMBP_DB.Where("t_menus_info.id in (SELECT menu_id FROM t_role_menus WHERE role_id = ? ) AND is_routing = true AND `status` = 1", roleId).Order("create_time").Find(&menus).Error
+	}
+	if err != nil {
+		return
+	}
+	var menusTree []system.MenusItem
+	menuService.GetMenuTree(flag, menus, 0, menusTree, system.MenusItem{})
+	return menusTree, err
+}
+
 //@author: [piexlmax](https://github.com/piexlmax)
 //@function: GetUserMenu
 //@description: 获取动态菜单树
@@ -117,7 +172,7 @@ func (menuService *MenuService) getMenuTreeMap(menusName string, roleId string) 
 //@return: menus []system.SysMenu, err error
 
 func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (menus systemRsp.MenusList, err error) {
-	menuTree, err := menuService.getMenuTreeMap(menusName, roleId)
+	menuTree, err := menuService.getUserMenuMap(menusName, roleId)
 	//menus = menuTree["0"]
 	//for i := 0; i < len(menus); i++ {
 	//	err = menuService.getChildrenList(&menus[i], menuTree)
@@ -125,13 +180,61 @@ func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (me
 	return menuTree, err
 }
 
-func (menuService *MenuService) GetMenuTree(menu_id string, roleId string) (menus systemRsp.MenusList, err error) {
-	menuTree, err := menuService.getMenuTreeMap(menu_id, roleId)
-	//menus = menuTree["0"]
-	//for i := 0; i < len(menus); i++ {
-	//	err = menuService.getChildrenList(&menus[i], menuTree)
-	//}
-	return menuTree, err
+func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, id int, menusTree []system.MenusItem, menusObj system.MenusItem) {
+
+	var childs []system.MenusItem
+	for _, m := range menuList {
+		var menusItem system.MenusItem
+		id++
+		menusItem.MenuID = m.ID
+		menusItem.ID = id
+		menusItem.Name = m.Name
+		menusItem.OrderID = m.OrderID
+		menusItem.Status = m.Status
+		menusItem.Children = []system.MenusItem{}
+		if m.LastMenu == "" {
+			menusItem.Icon = m.Icon
+			if flag == 2 {
+				menusItem.URL = m.Url
+			} else if flag != 1 {
+				menusItem.Type = m.Type
+				menusItem.AssemblyUrl = m.AssemblyUrl
+				menusItem.RoleList = m.RoleList
+				menusItem.IsRouting = m.IsRouting
+			}
+			childs = append(childs, menusItem)
+			menusTree = append(menusTree, menusItem)
+		} else {
+			if m.LastMenu == menusObj.MenuID {
+				if flag == 2 {
+					menusItem.URL = m.Url
+				}
+				if flag == 0 {
+					menusItem.URL = m.Url
+					menusItem.Type = m.Type
+					menusItem.AssemblyUrl = m.AssemblyUrl
+					menusItem.RoleList = m.RoleList
+					menusItem.IsRouting = m.IsRouting
+				}
+				childs = append(childs, menusItem)
+				menusObj.Children = append(menusObj.Children, menusItem)
+			}
+		}
+	}
+	if menusObj.MenuID == "" {
+		sort.Slice(menusTree, func(i, j int) bool {
+			return menusTree[i].OrderID < menusTree[j].OrderID
+		})
+	} else {
+		sort.Slice(menusObj.Children, func(i, j int) bool {
+			return menusObj.Children[i].OrderID < menusObj.Children[j].OrderID
+		})
+	}
+	for _, child := range childs {
+		id += len(menuList)
+		//id += len(child.Children)
+		menuService.GetMenuTree(flag, menuList, id, menusTree, child)
+	}
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -140,13 +243,13 @@ func (menuService *MenuService) GetMenuTree(menu_id string, roleId string) (menu
 //@param: menu *model.SysMenu, treeMap map[string][]model.SysMenu
 //@return: err error
 
-func (menuService *MenuService) getChildrenList(menu *system.SysMenu, treeMap map[string][]system.SysMenu) (err error) {
-	menu.Children = treeMap[menu.MenuId]
-	for i := 0; i < len(menu.Children); i++ {
-		err = menuService.getChildrenList(&menu.Children[i], treeMap)
-	}
-	return err
-}
+//func (menuService *MenuService) getChildrenList(menu *system.Menus, treeMap map[string][]system.Menus) (err error) {
+//	menu.Children = treeMap[menu.MenuId]
+//	for i := 0; i < len(menu.Children); i++ {
+//		err = menuService.getChildrenList(&menu.Children[i], treeMap)
+//	}
+//	return err
+//}
 
 //@author: [piexlmax](https://github.com/piexlmax)
 //@function: GetInfoList
