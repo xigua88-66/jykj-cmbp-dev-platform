@@ -15,7 +15,7 @@ func ClearToken(c *gin.Context) {
 	if err != nil {
 		host = c.Request.Host
 	}
-	c.SetCookie("x-token", "", -1, "/", host, true, false)
+	//c.SetCookie("x-token", "", -1, "/", host, true, false)
 	c.SetCookie("Authorization", "", -1, "/", host, true, false)
 }
 
@@ -25,8 +25,8 @@ func SetToken(c *gin.Context, token string, maxAge int) {
 	if err != nil {
 		host = c.Request.Host
 	}
-	c.SetCookie("x-token", token, maxAge, "/", host, true, false)
-	//c.SetCookie(" Authorization", "Bearer "+token, maxAge, "/", host, true, false)
+	//c.SetCookie("x-token", token, maxAge, "/", host, true, false)
+	c.SetCookie(" Authorization", "Bearer "+token, maxAge, "/", host, true, false)
 }
 
 func GetToken(c *gin.Context) string {
@@ -121,5 +121,18 @@ func GetUserName(c *gin.Context) string {
 	} else {
 		waitUse := claims.(*systemReq.CustomClaims)
 		return waitUse.Username
+	}
+}
+
+func GetUserRole(c *gin.Context) string {
+	if claims, exists := c.Get("claims"); !exists {
+		if cl, err := GetClaims(c); err != nil {
+			return ""
+		} else {
+			return cl.Role
+		}
+	} else {
+		waitUse := claims.(*systemReq.CustomClaims)
+		return waitUse.Role
 	}
 }

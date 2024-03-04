@@ -6,7 +6,7 @@ import (
 
 // file struct, 文件结构体
 type ExaFile struct {
-	global.CMBP_MODEL
+	global.CmbpModel
 	FileName     string
 	FileMd5      string
 	FilePath     string
@@ -17,7 +17,7 @@ type ExaFile struct {
 
 // file chunk struct, 切片结构体
 type ExaFileChunk struct {
-	global.CMBP_MODEL
+	global.CmbpModel
 	ExaFileID       string
 	FileChunkNumber int
 	FileChunkPath   string

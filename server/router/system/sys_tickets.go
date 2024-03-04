@@ -1,7 +1,6 @@
 package system
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	v1 "jykj-cmbp-dev-platform/server/api/v1"
 )
@@ -10,7 +9,6 @@ type TicketRouter struct {
 }
 
 func (s *TicketRouter) InitTicketRouter(Router *gin.RouterGroup) {
-	fmt.Println("tickets")
 
 	//ticketsRouter := Router.Group("tickets")
 	ticketsRouter := Router

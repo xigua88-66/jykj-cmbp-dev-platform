@@ -7,7 +7,7 @@ import (
 )
 
 type SysUser struct {
-	global.CMBP_MODEL
+	global.CmbpModel
 	UUID        uuid.UUID      `json:"uuid" gorm:"index;comment:用户UUID"`                                                     // 用户UUID
 	Username    string         `json:"userName" gorm:"index;comment:用户登录名"`                                                  // 用户登录名
 	Password    string         `json:"-"  gorm:"comment:用户登录密码"`                                                             // 用户登录密码
@@ -29,25 +29,20 @@ func (SysUser) TableName() string {
 }
 
 type Users struct {
-	//global.CMBP_MODEL
-	ID          string `json:"id"`
-	Account     int    `json:"account" gorm:"default:NULL;comment:账号"`
-	Password    string `json:"password"`
-	MineCode    string `json:"mine_code"`
-	Username    string `json:"username"`
-	Email       string `json:"email"`
-	Phone       int    `json:"phone"`
-	Token       string `json:"token"`
-	IsActive    bool   `json:"is_active"`
-	RootDisable bool   `json:"root_disable"`
-	//Role        string    `json:"role"`
-	MoveFlag   int       `json:"move_flag"`
-	ExpireTime time.Time `json:"expire_time"`
-	//LabelTasks     string    `json:"label_tasks"`
+	global.CmbpModel
+	Account        int       `json:"account" gorm:"default:NULL;comment:账号"`
+	Password       string    `json:"password"`
+	MineCode       string    `json:"mine_code"`
+	Username       string    `json:"username"`
+	Email          string    `json:"email"`
+	Phone          int       `json:"phone"`
+	Token          string    `json:"token"`
+	IsActive       bool      `json:"is_active"`
+	RootDisable    bool      `json:"root_disable"`
+	MoveFlag       int       `json:"move_flag"`
+	ExpireTime     time.Time `json:"expire_time"`
 	ExpireLoginNum int       `json:"expire_login_num"`
 	DingAccount    int       `json:"ding_account"`
-	CreateTime     time.Time `json:"create_time"`
-	UpdateTime     time.Time `json:"update_time"`
 }
 
 func (Users) TableName() string {

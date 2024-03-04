@@ -6,14 +6,14 @@ import (
 )
 
 type SysBaseMenuBtn struct {
-	global.CMBP_MODEL
+	global.CmbpModel
 	Name          string `json:"name" gorm:"comment:按钮关键key"`
 	Desc          string `json:"desc" gorm:"按钮备注"`
 	SysBaseMenuID string `json:"sysBaseMenuID" gorm:"comment:菜单ID"`
 }
 
 type Menus struct {
-	//global.CMBP_MODEL
+	//global.CmbpModel
 	ID          string     `json:"id" gorm:"primary_key;not null;unique"`
 	Type        int        `json:"type,omitempty" gorm:"not bull"`
 	Name        string     `json:"name"`

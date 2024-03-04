@@ -105,7 +105,7 @@ func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) 
 			}
 		}
 	}
-	return systemRsp.MenusList{Button: allbuttonList, Menus: allmenusList}, err
+	return systemRsp.MenusList{Button: allbuttonList, Menu: allmenusList}, err
 }
 
 func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interface{}, err error) {
@@ -154,7 +154,6 @@ func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interfac
 		return
 	}
 	var menusTree []system.MenusItem
-	//treeMap = make(map[string][]system.MenusItem)
 
 	menusTree = menuService.GetMenuTree(flag, menus, 0, nil)
 	if menusTree == nil {
@@ -180,19 +179,15 @@ func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (me
 
 func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, id int, menusObj *system.Menus) (menusTree []system.MenusItem) {
 
-	//var childs []system.Menus
-	//var menusTree []system.Menus
-	//
-	//
+	//var menusItem system.MenusItem
 	//for _, m := range menuList {
-	//	var menusItem system.Menus
 	//	id++
 	//	menusItem.MenuID = m.ID
-	//	menusItem.ID = strconv.Itoa(id)
+	//	menusItem.ID = id
 	//	menusItem.Name = m.Name
 	//	menusItem.OrderID = m.OrderID
 	//	menusItem.Status = m.Status
-	//	menusItem.Children = []system.Menus{}
+	//	menusItem.Children = []system.MenusItem{}
 	//	if menusObj == nil {
 	//		if m.LastMenu == "" {
 	//			menusItem.Icon = m.Icon
@@ -204,11 +199,13 @@ func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, i
 	//				menusItem.RoleList = m.RoleList
 	//				menusItem.IsRouting = m.IsRouting
 	//			}
-	//			childs = append(childs, menusItem)
-	//			menusTree = append(menusTree, menusItem)
+	//			menusItem.Children = menuService.GetMenuTree(flag, menuList, id, &m)
+	//			if menusItem.Children != nil {
+	//				menusTree = append(menusTree, menusItem)
+	//			}
 	//		}
 	//	} else {
-	//		if m.LastMenu == menusObj.MenuID {
+	//		if menusObj.ID != "" && m.LastMenu == menusObj.ID {
 	//			if flag == 2 {
 	//				menusItem.Url = m.Url
 	//			}
@@ -219,31 +216,16 @@ func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, i
 	//				menusItem.RoleList = m.RoleList
 	//				menusItem.IsRouting = m.IsRouting
 	//			}
-	//			childs = append(childs, menusItem)
-	//			menusObj.Children = append(menusObj.Children, menusItem)
+	//			menusItem.Children = menuService.GetMenuTree(flag, menuList, id, &m)
+	//			if menusItem.Children != nil {
+	//				menusTree = append(menusTree, menusItem)
+	//			}
 	//		}
 	//	}
 	//}
-	//if menusObj == nil {
-	//	sort.Slice(menusTree, func(i, j int) bool {
-	//		return menusTree[i].OrderID < menusTree[j].OrderID
-	//	})
-	//} else {
-	//	sort.Slice(menusObj.Children, func(i, j int) bool {
-	//		return menusObj.Children[i].OrderID < menusObj.Children[j].OrderID
-	//	})
-	//}
-	//for _, child := range childs {
-	//	id += len(menuList)
-	//	childChildren := menuService.GetMenuTree(flag, menuList, id, &child)
-	//	if len(childChildren) > 0 {
-	//		child.Children = childChildren
-	//		menusTree = append(menusTree, child)
-	//	}
-	//}
-	////if menusObj != nil {
-	////	return nil
-	////}
+	//sort.Slice(menusTree, func(i, j int) bool {
+	//	return menusTree[i].OrderID < menusTree[j].OrderID
+	//})
 	//return menusTree
 
 	var menusItem system.MenusItem
@@ -285,9 +267,6 @@ func (menuService *MenuService) GetMenuTree(flag int, menuList []system.Menus, i
 				menusItem.OrderID = m.OrderID
 				menusItem.Status = m.Status
 				menusItem.Children = []system.MenusItem{}
-				if flag == 2 {
-					menusItem.Url = m.Url
-				}
 				if flag == 0 {
 					if m.Type == 1 {
 						menusItem.Icon = m.Icon

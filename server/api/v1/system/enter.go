@@ -19,6 +19,7 @@ type ApiGroup struct {
 	AuthorityBtnApi
 	SysExportTemplateApi
 	TicketsApi
+	ModelOptionApi
 }
 
 var (
@@ -38,4 +39,5 @@ var (
 	dictionaryDetailService = service.ServiceGroupApp.SystemServiceGroup.DictionaryDetailService
 	authorityBtnService     = service.ServiceGroupApp.SystemServiceGroup.AuthorityBtnService
 	ticketService           = service.ServiceGroupApp.SystemServiceGroup.TicketService
+	modelService            = service.ServiceGroupApp.SystemServiceGroup.ModelService
 )

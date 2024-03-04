@@ -18,4 +18,5 @@ type ServiceGroup struct {
 	AuthorityBtnService
 	SysExportTemplateService
 	TicketService
+	ModelService
 }

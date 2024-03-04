@@ -7,7 +7,7 @@ import (
 
 // 如果含有time.Time 请自行import time包
 type SysDictionaryDetail struct {
-	global.CMBP_MODEL
+	global.CmbpModel
 	Label           string `json:"label" form:"label" gorm:"column:label;comment:展示值"`                                  // 展示值
 	Value           int    `json:"value" form:"value" gorm:"column:value;comment:字典值"`                                  // 字典值
 	Extend          string `json:"extend" form:"extend" gorm:"column:extend;comment:扩展值"`                               // 扩展值

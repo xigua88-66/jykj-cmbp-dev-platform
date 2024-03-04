@@ -17,4 +17,6 @@ var (
 	ChangePasswordVerify   = Rules{"Password": {NotEmpty()}, "NewPassword": {NotEmpty()}}
 	SetUserAuthorityVerify = Rules{"AuthorityId": {NotEmpty()}}
 	GetUserTicketsVerify   = Rules{"category": {NotEmpty()}}
+	ModelFieldVerify       = Rules{"Flag": {NotEmpty()}}
+	GetModelListVerify     = Rules{"Page": {NotEmpty()}, "LIMIT": {NotEmpty()}}
 )

@@ -16,7 +16,7 @@ type SysBaseMenuResponse struct {
 
 type MenusList struct {
 	Button []ButtonDetail `json:"button"`
-	Menus  []MenusDetail  `json:"menus"`
+	Menu   []MenusDetail  `json:"menu"`
 }
 
 type MenusDetail struct {

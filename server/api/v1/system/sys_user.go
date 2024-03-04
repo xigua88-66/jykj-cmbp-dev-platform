@@ -82,16 +82,14 @@ func (b *BaseApi) Login(c *gin.Context) {
 // TokenNext 登录以后签发jwt
 func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 	j := &utils.JWT{SigningKey: []byte(global.CMBP_CONFIG.JWT.SigningKey)} // 唯一签名
-	//var authorityId string
 	var role system.Roles
-	//err := global.CMBP_DB.Model(system.UserRoles{}).Where("user_id = ? ", user.ID).Pluck("role_id", &authorityId).Error
 	err := global.CMBP_DB.Model(system.Roles{}).Joins("JOIN t_user_roles ON t_user_roles.role_id=t_roles_info.id").Where("t_user_roles.user_id = ? ", user.ID).Find(&role).Error
 	if err != nil {
 		response.FailWithMessage("获取角色失败", c)
 		return
 	}
 	claims := j.CreateClaims(systemReq.BaseClaims{
-		//UUID:        user.UUID,
+		Role:        role.Name,
 		ID:          user.ID,
 		Phone:       user.Phone,
 		Username:    user.Username,
@@ -219,7 +217,7 @@ func (b *BaseApi) ChangePassword(c *gin.Context) {
 	}
 
 	uid := utils.GetUserID(c)
-	u := &system.Users{ID: uid, Password: req.OldPassword}
+	u := &system.Users{CmbpModel: global.CmbpModel{ID: uid}, Password: req.OldPassword}
 	_, err = userService.ChangePassword(u, req.NewPassword)
 	if err != nil {
 		global.CMBP_LOG.Error("修改失败!", zap.Error(err))
@@ -400,7 +398,7 @@ func (b *BaseApi) SetUserInfo(c *gin.Context) {
 		}
 	}
 	err = userService.SetUserInfo(system.SysUser{
-		CMBP_MODEL: global.CMBP_MODEL{
+		CmbpModel: global.CmbpModel{
 			ID: user.ID,
 		},
 		NickName:  user.NickName,
@@ -436,7 +434,7 @@ func (b *BaseApi) SetSelfInfo(c *gin.Context) {
 	}
 	user.ID = utils.GetUserID(c)
 	err = userService.SetSelfInfo(system.SysUser{
-		CMBP_MODEL: global.CMBP_MODEL{
+		CmbpModel: global.CmbpModel{
 			ID: user.ID,
 		},
 		NickName:  user.NickName,
@@ -473,6 +471,10 @@ func (b *BaseApi) GetUserInfo(c *gin.Context) {
 		return
 	}
 	response.OkWithDetailed(gin.H(ReqUser), "获取成功", c)
+}
+
+func (b *BaseApi) GetUserMsg(c *gin.Context) {
+	response.OkWithData(nil, c)
 }
 
 // ResetPassword

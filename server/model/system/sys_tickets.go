@@ -1,9 +1,13 @@
 package system
 
-import "time"
+import (
+	"jykj-cmbp-dev-platform/server/global"
+	"time"
+)
 
 type TicketRecord struct {
-	ID               string     `gorm:"primaryKey;type:string;size:32;default:generate_uuid"`
+	global.CmbpModel
+	//ID               string     `gorm:"primaryKey;type:string;size:32;default:generate_uuid"`
 	TicketCreator    string     `gorm:"type:string;size:32;not null"`
 	FeedbackType     *int       `gorm:"type:int;"`
 	WorkflowID       int        `gorm:"type:int;not null"`
@@ -26,8 +30,8 @@ type TicketRecord struct {
 	StartTime        time.Time  `gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 	EndTime          *time.Time `gorm:"type:datetime;"`
 	Duration         *int       `gorm:"type:int;"`
-	CreateTime       time.Time  `gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
-	UpdateTime       time.Time  `gorm:"type:datetime;default:CURRENT_TIMESTAMP;autoUpdateTime"`
+	//CreateTime       time.Time  `gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	//UpdateTime       time.Time  `gorm:"type:datetime;default:CURRENT_TIMESTAMP;autoUpdateTime"`
 }
 
 func (TicketRecord) TableName() string {
