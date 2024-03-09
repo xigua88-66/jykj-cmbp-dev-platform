@@ -1,6 +1,6 @@
 module jykj-cmbp-dev-platform/server
 
-go 1.20
+go 1.21
 
 require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.7+incompatible

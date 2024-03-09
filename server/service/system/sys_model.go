@@ -11,6 +11,7 @@ import (
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
+	"jykj-cmbp-dev-platform/server/utils"
 	"os"
 	"sort"
 	"strconv"
@@ -253,51 +254,11 @@ func (modelService *ModelService) GetAlgorithmLogic(params systemReq.AlgorithmRq
 }
 
 func (modelService *ModelService) GetModelList(params systemReq.ModelListReq, userId string) (getModelList interface{}, err error) {
-	var hadModels []string
-	global.CMBP_DB.Model(&system.AssetsManagement{}).Where("user_id = ? AND assets_type_id = 1", userId).Pluck("assets_id", &hadModels)
-	var appliedModels []string
-	global.CMBP_DB.Model(&system.AssetsRecord{}).Where("user_id = ? AND apply_status = 0", userId).Pluck("assets_id", &appliedModels)
 
-	var user system.Users
-	global.CMBP_DB.Where("id = ?", userId).First(&user)
-
-	QUERY := global.CMBP_DB.Model(&system.ModelMarketList{})
-	if params.IndustryCode != nil {
-		QUERY = QUERY.Where("industry_code = ?", params.IndustryCode)
-	} else if params.ModelPurpose != nil {
-		QUERY = QUERY.Where("model_purpose = ?", params.ModelPurpose)
-	} else if params.NameOrDesc != "" {
-		QUERY = QUERY.Where("model_name LIKE ? OR model_chinese_name LIKE ? OR model_description LIKE ? OR technical_description LIKE ? OR performance_description LIKE ?", "%"+params.NameOrDesc+"%")
-		// TODO 添加用户访问记录
-	} else if params.Type != "" {
-		QUERY = QUERY.Where("model_type = ?", params.Type)
-	} else if params.Code != "" {
-		QUERY = QUERY.Where("model_field = ?", params.Code)
-	} else if params.ReqType == 1 {
-		hadModels = append(hadModels, appliedModels...)
-		// TODO 对hadModels去重
-		QUERY = QUERY.Where("id NOT IN ?", hadModels)
-	} else if params.ReqType == 2 {
-		QUERY = QUERY.Where("id IN ?", hadModels)
-	} else if params.ReqType == 3 {
-		var downloadModels []string
-		if user.MineCode != "" {
-			global.CMBP_DB.Model(&system.Model{}).Where("mine_code = ?", user.MineCode).Pluck("model_all_id", &downloadModels)
-		}
-		QUERY = QUERY.Where("id IN ?", hadModels).Where("model_kind != 1 AND id NOT IN ?", downloadModels)
-	} else if params.ReqType == 4 {
-		QUERY = QUERY.Where("id NOT IN ?", hadModels).Where("id IN ?", appliedModels)
-	} else {
-		return nil, errors.New("参数错误")
-	}
-	if params.Flag == 1 {
-		QUERY = QUERY.Order("down_load_count DESC")
-	} else {
-		QUERY = QUERY.Order("update_time DESC")
-	}
 	var modelList []system.ModelMarketList
 	if params.AlgorithmID != nil {
-		QUERY = QUERY.Where("algorithm_id = ?", params.AlgorithmID)
+		QUERY, _, hadModels, appliedModels, user := SetModelMarketListCondition(params, userId)
+		QUERY = QUERY.Where("algorithm_id = ?", *params.AlgorithmID)
 		QUERY.Limit(params.Limit).Offset(params.Limit * (params.Page - 1)).Find(&modelList)
 		dataList := FormatModelList(modelList, *params.ModelPurpose, hadModels, appliedModels, user.MineCode, userId)
 		rspList := map[string]interface{}{
@@ -305,8 +266,10 @@ func (modelService *ModelService) GetModelList(params systemReq.ModelListReq, us
 			"count":      len(dataList),
 		}
 		return rspList, nil
-	} else if params.ModelKind != nil {
-		QUERY = QUERY.Where("model_kind = ?", params.ModelKind)
+	} else if params.ModelKind != nil && *params.ModelKind != 0 {
+		QUERY, _, hadModels, appliedModels, user := SetModelMarketListCondition(params, userId)
+
+		QUERY = QUERY.Where("model_kind = ?", *params.ModelKind)
 		err = QUERY.Limit(params.Limit).Offset(params.Limit * (params.Page - 1)).Find(&modelList).Error
 		if err != nil {
 			return nil, err
@@ -327,6 +290,7 @@ func (modelService *ModelService) GetModelList(params systemReq.ModelListReq, us
 		if err != nil {
 			return nil, err
 		}
+		var rspList []map[string]interface{}
 		for _, kindInfo := range modelKind {
 			var limit int
 			if kindInfo.ModelKind == 2 {
@@ -334,32 +298,86 @@ func (modelService *ModelService) GetModelList(params systemReq.ModelListReq, us
 			} else {
 				limit = params.Limit
 			}
-			QUERY = QUERY.Where("model_kind = ?", kindInfo.ModelKind)
-			err = QUERY.Limit(limit).Offset(limit * (params.Page - 1)).Find(&modelList).Error
+			QUERY, _, hadModels, appliedModels, user := SetModelMarketListCondition(params, userId)
+
+			realQuery := QUERY.Where("model_kind = ?", kindInfo.ModelKind)
+			err = realQuery.Limit(limit).Offset(limit * (params.Page - 1)).Find(&modelList).Error
 			dataList := FormatModelList(modelList, *params.ModelPurpose, hadModels, appliedModels, user.MineCode, userId)
-			rspList := map[string]interface{}{
+			rspData := map[string]interface{}{
 				"model_kind":  kindInfo.ModelKind,
 				"count":       len(dataList),
 				"total_count": len(dataList),
 				"model_list":  dataList,
 			}
-			return rspList, nil
+			rspList = append(rspList, rspData)
 		}
+		return rspList, nil
 	}
+}
 
-	return nil, err
+func SetModelMarketListCondition(params systemReq.ModelListReq, userId string) (query *gorm.DB, err error, hadModels []string, appliedModels []string, user system.Users) {
+	//var hadModels []string
+	global.CMBP_DB.Model(&system.AssetsManagement{}).Where("user_id = ? AND assets_type_id = 1", userId).Pluck("assets_id", &hadModels)
+	//var appliedModels []string
+	global.CMBP_DB.Model(&system.AssetsRecord{}).Where("user_id = ? AND apply_status = 0", userId).Pluck("assets_id", &appliedModels)
+
+	//var user system.UserRoles
+	global.CMBP_DB.Where("id = ?", userId).First(&user)
+
+	QUERY := global.CMBP_DB.Model(&system.ModelMarketList{})
+	if params.IndustryCode != nil {
+		QUERY = QUERY.Where("industry_code = ?", params.IndustryCode)
+	}
+	if params.ModelPurpose != nil {
+		QUERY = QUERY.Where("model_purpose = ?", params.ModelPurpose)
+	}
+	if params.NameOrDesc != "" {
+		QUERY = QUERY.Where("model_name LIKE ? OR model_chinese_name LIKE ? OR model_description LIKE ? OR technical_description LIKE ? OR performance_description LIKE ?", "%"+params.NameOrDesc+"%")
+		// TODO 添加用户访问记录
+	}
+	if params.Type != "" {
+		QUERY = QUERY.Where("model_type = ?", params.Type)
+	} else if params.Code != "" {
+		QUERY = QUERY.Where("model_field = ?", params.Code)
+	}
+	if params.ReqType == 1 {
+		hadModels = append(hadModels, appliedModels...)
+		// TODO 对hadModels去重
+		QUERY = QUERY.Where("id NOT IN ?", hadModels)
+	} else if params.ReqType == 2 {
+		QUERY = QUERY.Where("id IN ?", hadModels)
+	} else if params.ReqType == 3 {
+		var downloadModels []string
+		if user.MineCode != "" {
+			global.CMBP_DB.Model(&system.Model{}).Where("mine_code = ?", user.MineCode).Pluck("model_all_id", &downloadModels)
+		}
+		QUERY = QUERY.Where("id IN ?", hadModels).Where("model_kind != 1 AND id NOT IN ?", downloadModels)
+	} else if params.ReqType == 4 {
+		QUERY = QUERY.Where("id NOT IN ?", hadModels).Where("id IN ?", appliedModels)
+	} else if params.ReqType == 0 {
+
+	} else {
+		return nil, errors.New("参数错误"), nil, nil, system.Users{}
+
+	}
+	if params.Flag == 1 {
+		QUERY = QUERY.Order("down_load_count DESC")
+	} else {
+		QUERY = QUERY.Order("update_time DESC")
+	}
+	return QUERY, nil, hadModels, appliedModels, user
 }
 
 func FormatModelList(modelList []system.ModelMarketList, isCloud int, hadModel []string, appliedModels []string, mineCode string, userID string) []interface{} {
 
-	var rspData []interface{}
+	rspData := []interface{}{}
 
 	for _, m := range modelList {
 		modelZhName := m.ModelChineseName
 		if isCloud != 0 {
 			nameSplit := strings.Split(modelZhName, "-")
 			if len(nameSplit) >= 2 {
-				modelZhName = "某企业" + strings.Join(nameSplit[1:], "")
+				modelZhName = "某企业" + strings.Join(nameSplit[1:], "-")
 			}
 		}
 		// TODO 通过配置文件返回生成地址
@@ -397,7 +415,7 @@ func FormatModelList(modelList []system.ModelMarketList, isCloud int, hadModel [
 				Where("model_version = ?", fmt.Sprintf("%s.%d", m.ModelVersion, m.Edition)).
 				Where("user = ? OR user = ?", user, userID).First(&modelInfo)
 		}
-		if *modelInfo.SyncFlag == 1 || modelInfo.SyncFlag == nil {
+		if modelInfo.SyncFlag == nil || *modelInfo.SyncFlag == 1 {
 			isDownload = 1 // 已下载
 		} else if *modelInfo.SyncFlag == 0 || *modelInfo.SyncFlag == -1 {
 			isDownload = 2 // 下载中
@@ -483,7 +501,7 @@ func (modelService *ModelService) GetModelStore(params systemReq.ModelStoreRqe, 
 		} else {
 			var modelKind []system.ModelKind
 			global.CMBP_DB.Model(&system.ModelKind{}).Order("model_kind").Find(&modelKind)
-			var allKindModel [][]interface{}
+			var allKindModel []interface{}
 			for _, mk := range modelKind {
 				if mk.ModelKind == 2 {
 					params.Limit = 10
@@ -497,7 +515,7 @@ func (modelService *ModelService) GetModelStore(params systemReq.ModelStoreRqe, 
 	return rspData, nil
 }
 
-func ForEachStoreModel(params systemReq.ModelStoreRqe, user system.Users, autoUpdateModel []string) (rspData []interface{}, err error) {
+func ForEachStoreModel(params systemReq.ModelStoreRqe, user system.Users, autoUpdateModel []string) (rspData interface{}, err error) {
 	var modelALl []system.ModelAll
 	QUERY := global.CMBP_DB.Model(&system.ModelAll{})
 	if len(autoUpdateModel) > 0 {
@@ -583,8 +601,8 @@ func ForEachStoreModel(params systemReq.ModelStoreRqe, user system.Users, autoUp
 				"count":       len(rspDataList),
 				"total_count": totalCount,
 			}
-			rspData = append(rspData, d)
-			return rspData, nil
+			//rspData = append(rspData, d)
+			return d, nil
 
 		}
 	} else {
@@ -600,8 +618,8 @@ func ForEachStoreModel(params systemReq.ModelStoreRqe, user system.Users, autoUp
 				"count":       len(rspDataList),
 				"total_count": totalCount,
 			}
-			rspData = append(rspData, d)
-			return rspData, nil
+			//rspData = append(rspData, d)
+			return d, nil
 		}
 	}
 }
@@ -612,7 +630,7 @@ func FormatStoreModel(modelAll []system.ModelAll, userID string) (rspList []inte
 		var industryName string
 		global.CMBP_DB.Model(&system.Industry{}).Where("industry_code = ?", m.IndustryCode).Pluck("industry_name", &industryName)
 		var dCount int64
-		global.CMBP_DB.Model(&system.Model{}).Joins("JOIN t_model_info ON t_model_info.model_name = t_model_all.model_name AND t_model_info.model_version = t_model_all.model_version").
+		global.CMBP_DB.Model(&system.Model{}).Joins("JOIN t_model_info ON t_model_all.model_name = t_model_all.model_name AND t_model_info.model_version = t_model_all.model_version").
 			Where("t_model_all.id = ?", m.ID).Count(&dCount)
 		var runtime system.RuntimeModels
 		runtimeId := ""
@@ -664,7 +682,7 @@ func FormatStoreModel(modelAll []system.ModelAll, userID string) (rspList []inte
 			"model_name":              m.ModelName,
 			"model_chinese_name":      m.ModelChineseName,
 			"model_version":           m.ModelVersion,
-			"model_description":       fmt.Sprintf("功能描述：%s；\\n技术描述：%s；\\n性能描述：%s。", m.ModelDescription, m.TechnicalDescription, m.PerformanceDescription),
+			"model_description":       fmt.Sprintf("功能描述：%s；\n技术描述：%s；\n性能描述：%s。", m.ModelDescription, m.TechnicalDescription, m.PerformanceDescription),
 			"technical_description":   m.TechnicalDescription,
 			"performance_description": m.PerformanceDescription,
 			"download_count":          dCount,
@@ -973,4 +991,146 @@ func (modelService *ModelService) GetIndustry(params systemReq.GetIndustry) (rsp
 		}
 		return d, nil
 	}
+}
+
+func (modelService *ModelService) UnPublishModel(uuid string, token string) error {
+	tempPath := fmt.Sprintf("/home/tmp/%s", uuid)
+	_, err := os.Stat(tempPath)
+	if !os.IsNotExist(err) { // 存在
+		err := os.RemoveAll(tempPath)
+		if err != nil {
+			return err
+		}
+	}
+	global.CMBP_REDIS.Del(context.Background(), uuid)
+	global.CMBP_REDIS.Del(context.Background(), "upload_"+token)
+	return nil
+}
+
+func (modelService *ModelService) CancelUpload(uuid, userID string) (err error) {
+	busModelDir := fmt.Sprintf("/home/models/BusinessModelsLibrary/%s/%s", userID, uuid)
+	busModelDirBak := fmt.Sprintf("/home/models/BusinessModelsLibrary/%s/%s_bak", userID, uuid)
+	totalCount := int64(0)
+	global.CMBP_DB.Model(&system.BusinessModelAll{}).Where("id = ?", uuid).Count(&totalCount)
+	_, bakErr := os.Stat(busModelDirBak)
+	_, moderr := os.Stat(busModelDir)
+	if !os.IsNotExist(bakErr) {
+		err = os.RemoveAll(busModelDirBak)
+	} else if os.IsNotExist(moderr) && totalCount > 0 {
+		err = os.RemoveAll(busModelDir)
+	}
+	if err != nil {
+		return errors.New(fmt.Sprintf("文件删除失败， %s", err.Error()))
+	}
+	pid := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid)).String()
+	if pid != "" {
+		err = utils.KillProcess(pid)
+		if err != nil {
+			return err
+		}
+		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid))
+		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_port", userID, uuid))
+	}
+	aiPid := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_ai", userID, uuid)).String()
+	if aiPid != "" {
+		err = utils.KillProcess(aiPid)
+		if err != nil {
+			return err
+		}
+		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid))
+		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_port", userID, uuid))
+	}
+	err = global.CMBP_DB.Model(&system.Notebook{}).Where("user_id = ?", userID).Where("uuid = ?", uuid).Where("status = 1").Update("status", 0).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (modelService *ModelService) GetTestFreeApplication(params systemReq.GetTestFreeApply) (rspData interface{}, err error) {
+	selectStatus := []int{99, 100, 101}
+
+	modelId := []string{}
+	QUERY := global.CMBP_DB.Model(&system.ApplicationRecord{}).
+		Joins("JOIN t_model_all ON t_application_record.model_id = t_model_all.id").
+		Where("application_status IN ?", selectStatus)
+	if params.NameOrDesc != "" {
+		var user system.Users
+		var model system.ModelAll
+		global.CMBP_DB.Where("username = ?", params.NameOrDesc).First(&user)
+		global.CMBP_DB.Where("model_name LIKE ? OR model_chinese_name LIKE ?", "%s"+params.NameOrDesc+"%s").First(&model)
+		QUERY.Where("reason LIKE ? OR user = ? OR model_id = ?", "%s"+params.NameOrDesc+"%s", user.ID, model.ID).
+			Order("t_application_record.create_time DESC").Pluck("model_id", &modelId)
+	} else {
+		QUERY.Order("t_application_record.create_time DESC").Pluck("model_id", &modelId)
+	}
+	//count := len(modelId)
+	modelId = modelId[(*params.Page-1)**params.Limit : *params.Page**params.Limit]
+
+	var testFreeModelRes []system.TestFreeModelRes
+
+	global.CMBP_DB.Table("t_model_all AS mal").
+		Joins("JOIN t_model_type AS mty ON mal.model_type = mty.model_type").
+		Joins("JOIN t_model_field AS mf ON mty.model_field_id = mf.id").
+		Joins("JOIN t_hardware_arch AS hard ON hard.code = mal.hardware_type").
+		Joins("JOIN t_user_info AS us ON mal.user = us.id").
+		Joins("JOIN t_application_record AS record ON mal.id = record.model_id").
+		Where("mal.id IN ?", modelId).
+		Select("mal.*, mty.model_type_desc AS model_type_desc, mf.name AS model_field_desc, hard.name AS hardware_type_name, us.username AS developer").
+		Scan(&testFreeModelRes)
+
+	if err != nil {
+		return nil, err
+	}
+	return testFreeModelRes, nil
+	//for _, mal := range modelAllList {
+	//	d := map[string]interface{}{
+	//		"model_id": mal.ID,
+	//		"model_type": mal.ModelType,
+	//		"model_type_desc":GetModelType(attribute="model_type"),
+	//		"model_field": GetModelFieldCode(attribute="model_type"),
+	//		"model_field_desc": GetModelFieldName(attribute="model_type"),
+	//		"model_name": fields.String,
+	//		"model_chinese_name": fields.String,
+	//		"model_version": fields.String,
+	//		"model_description": fields.String,
+	//		"technical_description": fields.String,
+	//		"performance_description": fields.String,
+	//		"download_count": DownloadCount(attribute="id"),
+	//		"collection_count": CollectionCount(attribute="id"),
+	//		"view_count": ViewCount(attribute="id"),
+	//		"hardware_type": fields.String(attribute="hardware_type"),
+	//		"hardware_type_name": GetHardwareTypeName(attribute="hardware_type"),
+	//		"hardware_type_desc": GetHardwareType(attribute="hardware_type"),
+	//		"is_image": GetStr(attribute="is_image"),
+	//		"is_real_channel": GetIsRealChannel(attribute="id"),
+	//		"cmd": fields.String,
+	//		"json_url": fields.String,
+	//		"img_url": fields.String,
+	//		"on_boot": GetStr(attribute="on_boot"),
+	//		"need_gpu": GetStr(attribute="need_gpu"),
+	//		"audit_state": fields.String(attribute="audit_state"),
+	//		"user": fields.String,
+	//		"developer": GetUser(default="root", attribute="user"),  # 模型开发上传人员
+	//		"upload_time": fields.String(attribute="update_time"),
+	//		"business_dict": JsonToDict(attribute="business_params"),
+	//		"img_path": GetModelImgPath(attribute="id"),
+	//		"img2_path": GetModelImg2Path(attribute="id"),
+	//		"video_path": GetModelVideoPath(attribute="id"),
+	//		"edit": GetEdit(attribute="user"),
+	//		"model2video_config_list": GetModel2VideoList(attribute='id'),
+	//		"test_status":GetTestStatus(attribute='id'),
+	//		"reason":GetReason(attribute='id'),          #模型免测原因
+	//		"phone":GetApplicant(attribute='id'),
+	//		"application_time":GetApplicantTime(attribute='id'),  #模型免测申请时间
+	//		"metadata_update_flag":GetUpdateFlag1(attribute='id'),
+	//		"ai_model_update_flag":GetUpdateFlag2(attribute='id'),
+	//		"business_model_update_flag":GetUpdateFlag3(attribute='id'),
+	//		"runtime_update_flag":GetUpdateFlag4(attribute='id'),
+	//		"model_kind": GetModelKind(attribute='id'),
+	//		"model_status":GetModelStatus(attribute='id'),
+	//		"process_type": GetProcessType(attribute='id'),
+	//		"power_list": QueryPower(attribute='id'),
+	//	}
+	//}
 }

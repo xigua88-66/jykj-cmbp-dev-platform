@@ -56,3 +56,14 @@ type ChangeUserInfo struct {
 	Enable       int                   `json:"enable" gorm:"comment:冻结用户"`                                                           //冻结用户
 	Authorities  []system.SysAuthority `json:"-" gorm:"many2many:sys_user_authority;"`
 }
+
+type EnableUser struct {
+	UserId string `json:"user_id" binding:"required"`
+	Flag   int    `json:"flag" binding:"required"`
+}
+
+type AdminGetUserList struct {
+	Limit       int    `form:"limit" binding:"required"`
+	Page        int    `form:"page" binding:"required"`
+	NameOrPhone string `form:"name_or_phone"`
+}

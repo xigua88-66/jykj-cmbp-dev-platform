@@ -22,3 +22,19 @@ type SysOperationRecord struct {
 	UserID       string        `json:"user_id" form:"user_id" gorm:"column:user_id;comment:用户id"`                    // 用户id
 	User         SysUser       `json:"user"`
 }
+
+type FrontLog struct {
+	ID         uint      `gorm:"primarykey" json:"ID"` // 主键ID
+	MineCode   string    `gorm:"column:mine_code;size:9;not null"`
+	Username   string    `gorm:"column:username;size:20;not null"`
+	SubSystem  string    `gorm:"column:sub_system;size:20;not null;default:'cmbp'"`
+	PageName   string    `gorm:"column:page_name;size:32;not null"`
+	Mark       string    `gorm:"column:mark;size:32"`
+	EnterTime  time.Time `gorm:"column:enter_time;not null"`
+	LeaveTime  time.Time `gorm:"column:leave_time;not null"`
+	CreateTime time.Time `gorm:"column:create_time;default:current_timestamp;autoCreateTime"`
+}
+
+func (FrontLog) TableName() string {
+	return "sys_ops_log"
+}

@@ -18,5 +18,5 @@ type BaseClaims struct {
 	Username    string
 	Role        string
 	AuthorityId string
-	Phone       int
+	Phone       string
 }

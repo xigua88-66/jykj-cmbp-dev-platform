@@ -93,7 +93,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 		ID:          user.ID,
 		Phone:       user.Phone,
 		Username:    user.Username,
-		AuthorityId: role.Id,
+		AuthorityId: role.ID,
 	})
 	token, err := j.CreateToken(claims)
 	if err != nil {
@@ -101,6 +101,9 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 		response.FailWithMessage("获取token失败", c)
 		return
 	}
+
+	global.CMBP_DB.Model(&user).Update("token", token[len(token)-127:])
+
 	// 不允许多点登录
 	if !global.CMBP_CONFIG.System.UseMultipoint {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
@@ -241,29 +244,19 @@ func (b *BaseApi) ChangePassword(c *gin.Context) {
 // @Success   200   {object}  response.Response{data=response.PageResult,msg=string}  "分页获取用户列表,返回包括列表,总数,页码,每页数量"
 // @Router    /user/getUserList [post]
 func (b *BaseApi) GetUserList(c *gin.Context) {
-	var pageInfo request.PageInfo
-	err := c.ShouldBindJSON(&pageInfo)
+	var params systemReq.AdminGetUserList
+	err := c.ShouldBindQuery(&params)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = utils.Verify(pageInfo, utils.PageInfoVerify)
-	if err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
-	list, total, err := userService.GetUserInfoList(pageInfo)
+	rspData, err := userService.GetUserInfoList(params)
 	if err != nil {
 		global.CMBP_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
 		return
 	}
-	response.OkWithDetailed(response.PageResult{
-		List:     list,
-		Total:    total,
-		Page:     pageInfo.Page,
-		PageSize: pageInfo.PageSize,
-	}, "获取成功", c)
+	response.OkWithData(rspData, c)
 }
 
 // SetUserAuthority
@@ -499,4 +492,53 @@ func (b *BaseApi) ResetPassword(c *gin.Context) {
 		return
 	}
 	response.OkWithMessage("重置成功", c)
+}
+
+func (b *BaseApi) CMBPDataGetUserList(c *gin.Context) {
+	phone := c.Param("phone")
+	rspData, err := userService.CMBPDataGetUserList(phone)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	} else {
+		response.OkWithData(rspData, c)
+		return
+	}
+}
+
+func (b *BaseApi) EnableUser(c *gin.Context) {
+	var params systemReq.EnableUser
+	err := c.ShouldBindJSON(&params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	rspData, err := userService.EnableUser(params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	} else {
+		response.OkWithData(rspData, c)
+	}
+}
+
+func (b *BaseApi) GetUserName(c *gin.Context) {
+	token := c.Query("token")
+	if token != "" && len(token) > 127 {
+		token = token[len(token)-127:]
+	} else {
+		response.FailWithMessage("token失效", c)
+		return
+	}
+	var user []system.Users
+	global.CMBP_DB.Model(system.Users{}).Where("token LIKE ?", token).First(&user)
+	if user == nil || len(user) == 0 {
+		response.FailWithMessage("token失效，查找不到该用户", c)
+		return
+	}
+	rspData := map[string]interface{}{
+		"username": user[0].Phone,
+	}
+	response.OkWithData(rspData, c)
+	return
 }

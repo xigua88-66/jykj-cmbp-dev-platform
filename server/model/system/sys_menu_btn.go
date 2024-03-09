@@ -30,7 +30,7 @@ type Menus struct {
 	UpdateTime  *time.Time `json:"update_time,omitempty"`
 	MenuID      string     `json:"menu_id" gorm:"-"`
 	Children    []Menus    `json:"children" gorm:"-"`
-	//Roles       []string  `gorm:"foreignKey:role_id;references:id"`
+	//UserRoles       []string  `gorm:"foreignKey:role_id;references:id"`
 }
 
 func (Menus) TableName() string {

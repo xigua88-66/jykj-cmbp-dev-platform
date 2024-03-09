@@ -30,27 +30,41 @@ func (SysUser) TableName() string {
 
 type Users struct {
 	global.CmbpModel
-	Account        int       `json:"account" gorm:"default:NULL;comment:账号"`
-	Password       string    `json:"password"`
-	MineCode       string    `json:"mine_code"`
-	Username       string    `json:"username"`
-	Email          string    `json:"email"`
-	Phone          int       `json:"phone"`
-	Token          string    `json:"token"`
-	IsActive       bool      `json:"is_active"`
-	RootDisable    bool      `json:"root_disable"`
-	MoveFlag       int       `json:"move_flag"`
-	ExpireTime     time.Time `json:"expire_time"`
-	ExpireLoginNum int       `json:"expire_login_num"`
-	DingAccount    int       `json:"ding_account"`
+	MineCode       string      `gorm:"size:9" json:"mine_code"`
+	Username       string      `gorm:"uniqueIndex;size:20;not null" json:"username"`
+	Password       string      `gorm:"size:128;not null" json:"password"`
+	Email          string      `gorm:"size:50;not null" json:"email"`
+	Phone          string      `gorm:"size:11;not null" json:"phone"`
+	Token          string      `gorm:"size:128" json:"token"`
+	IsActive       bool        `gorm:"default:false" json:"is_active"`
+	RootDisable    bool        `gorm:"default:false" json:"root_disable"`
+	Account        *int        `gorm:"index" json:"account,omitempty"`
+	MoveFlag       *int        `gorm:"index" json:"move_flag,omitempty"`
+	ExpireTime     *time.Time  `gorm:"comment:'账号过期时间，默认为空，表示永不过期'" json:"expire_time"`
+	ExpireLoginNum uint8       `gorm:"default:0;comment:'账号过期后允许的登录次数'" json:"expire_login_num"`
+	DingAccount    *string     `gorm:"comment:'钉钉账号'" json:"ding_account"`
+	UserRoles      []UserRoles `gorm:"foreignKey:user_id;references:id" json:"-"`
 }
 
-func (Users) TableName() string {
+func (u *Users) TableName() string {
 	return "t_user_info"
 }
 
+func (u *Users) Roles() interface{} {
+	if len(u.UserRoles) == 1 {
+		return u.UserRoles[0].Role.Name
+	} else if len(u.UserRoles) > 1 {
+		roles := make([]string, 0, len(u.UserRoles))
+		for _, r := range u.UserRoles {
+			roles = append(roles, r.Role.Name)
+		}
+		return roles
+	}
+	return nil
+}
+
 type MineRegistry struct {
-	MineCode        string    `json:"mine_code"`
+	MineCode        string    `gorm:"primaryKey" json:"mine_code"`
 	MineFullname    string    `json:"mine_fullname"`
 	MineShortname   string    `json:"mine_shortname"`
 	MineCapacity    int       `json:"mine_capacity"`

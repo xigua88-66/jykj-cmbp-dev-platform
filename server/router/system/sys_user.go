@@ -23,12 +23,24 @@ func (s *UserRouter) InitUserRouter(Router *gin.RouterGroup) {
 		userRouter.POST("setUserAuthorities", baseApi.SetUserAuthorities) // 设置用户权限组
 		userRouter.POST("resetPassword", baseApi.ResetPassword)           // 设置用户权限组
 
-		userRouter.GET("v1.4/user_info", baseApi.GetUserInfo) // 获取用户信息
-		userRouter.GET("v1.4/message", baseApi.GetUserMsg)    // 获取用户信息
+		userRouter.GET("v1.4/user_info", baseApi.GetUserInfo)             // 获取用户信息
+		userRouter.GET("v1.4/message", baseApi.GetUserMsg)                // 获取用户信息
+		userRouter.GET("/v1.0/users/:phone", baseApi.CMBPDataGetUserList) // 数据工厂获取用户列表
+		userRouter.PUT("/v1.0/user", baseApi.EnableUser)                  // 启用和禁用用户
+		//userRouter.GET("/v1.0/getusername", baseApi.GetUserName)          // 数据工厂获取用户名
+		userRouter.GET("/v1.4/userlist", baseApi.GetUserList) // 启用和禁用用户
 
 	}
 	{
-		userRouterWithoutRecord.POST("getUserList", baseApi.GetUserList) // 分页获取用户列表
-		userRouterWithoutRecord.GET("getUserInfo", baseApi.GetUserInfo)  // 获取自身信息
+		//userRouterWithoutRecord.POST("getUserList", baseApi.GetUserList) // 分页获取用户列表
+		userRouterWithoutRecord.GET("getUserInfo", baseApi.GetUserInfo) // 获取自身信息
+	}
+}
+
+func (s *UserRouter) InitNotAuthRouter(Router *gin.RouterGroup) {
+	userRouter := Router
+	baseApi := v1.ApiGroupApp.SystemApiGroup.BaseApi
+	{
+		userRouter.GET("/v1.0/getusername", baseApi.GetUserName) // 数据工厂获取用户名
 	}
 }

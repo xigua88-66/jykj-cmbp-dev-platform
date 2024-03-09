@@ -286,36 +286,35 @@ func (ModelMarketList) TableName() string {
 
 type Model struct {
 	global.CmbpModel
-	MineCode         string `gorm:"column:mine_code;size:9"`
-	ModelType        string `gorm:"column:model_type;size:7;not null"`
-	ModelName        string `gorm:"column:model_name;size:50;not null"`
-	ModelChineseName string `gorm:"column:model_chinese_name;size:50"`
-	ModelVersion     string `gorm:"column:model_version;size:20;not null"`
-	ModelDescription string `gorm:"column:model_description;size:100;not null"`
-	MD5              string `gorm:"column:md5;size:50"`
-	IsGPU            bool   `gorm:"column:is_GPU"`
-	HardwareType     int    `gorm:"column:hardware_type"`
-	IsImage          bool   `gorm:"column:is_image"`
-	Cmd              string `gorm:"column:cmd;size:500"`
-	JSONURL          string `gorm:"column:json_url;size:200"`
-	ImgURL           string `gorm:"column:img_url;size:200"`
-	BusinessList     string `gorm:"column:business_list;size:200"`
-	BusinessParams   string `gorm:"column:business_params;text"`
-	OnBoot           bool   `gorm:"column:on_boot"`
-	NeedGPU          bool   `gorm:"column:need_gpu"`
-	SyncFlag         *int   `gorm:"column:sync_flag"`
-	ModelAllID       string `gorm:"column:model_all_id;size:32"`
-	// 在Gorm中处理一对多关系需要额外定义ModelConfig关联的model
-	ModelConfig   []ModelConfig `gorm:"foreignkey:ModelID"`
-	User          string        `gorm:"column:user;size:32;ForeignKey:TUserInfo.ID;references:ID;on_delete:CASCADE"`
-	Channels      int           `gorm:"column:channels"`
-	Deadline      string        `gorm:"column:deadline;size:30"`
-	PayStatus     int           `gorm:"column:pay_status"`
-	IsRealChannel *string       `gorm:"column:is_real_channel;size:50"`
-	Accuracy      int           `gorm:"column:accuracy"`
-	TestDuration  int           `gorm:"column:test_duration"`
-	NewModelFlag  int           `gorm:"column:new_model_flag"`
-	BusinessType  string        `gorm:"column:business_type;text"`
+	MineCode         string        `gorm:"column:mine_code;size:9"`
+	ModelType        string        `gorm:"column:model_type;size:7;not null"`
+	ModelName        string        `gorm:"column:model_name;size:50;not null"`
+	ModelChineseName string        `gorm:"column:model_chinese_name;size:50"`
+	ModelVersion     string        `gorm:"column:model_version;size:20;not null"`
+	ModelDescription string        `gorm:"column:model_description;size:100;not null"`
+	MD5              string        `gorm:"column:md5;size:50"`
+	IsGPU            bool          `gorm:"column:is_GPU"`
+	HardwareType     int           `gorm:"column:hardware_type"`
+	IsImage          bool          `gorm:"column:is_image"`
+	Cmd              string        `gorm:"column:cmd;size:500"`
+	JSONURL          string        `gorm:"column:json_url;size:200"`
+	ImgURL           string        `gorm:"column:img_url;size:200"`
+	BusinessList     string        `gorm:"column:business_list;size:200"`
+	BusinessParams   string        `gorm:"column:business_params;text"`
+	OnBoot           bool          `gorm:"column:on_boot"`
+	NeedGPU          bool          `gorm:"column:need_gpu"`
+	SyncFlag         *int          `gorm:"column:sync_flag"`
+	ModelAllID       string        `gorm:"column:model_all_id;size:32"`
+	ModelConfig      []ModelConfig `gorm:"foreignKey:ModelID;references:ID;cascade:save"` // 在Gorm中处理一对多关系需要额外定义ModelConfig关联的model
+	User             string        `gorm:"column:user;size:32;ForeignKey:TUserInfo.ID;references:ID;on_delete:CASCADE"`
+	Channels         int           `gorm:"column:channels"`
+	Deadline         string        `gorm:"column:deadline;size:30"`
+	PayStatus        int           `gorm:"column:pay_status"`
+	IsRealChannel    *string       `gorm:"column:is_real_channel;size:50"`
+	Accuracy         int           `gorm:"column:accuracy"`
+	TestDuration     int           `gorm:"column:test_duration"`
+	NewModelFlag     int           `gorm:"column:new_model_flag"`
+	BusinessType     string        `gorm:"column:business_type;text"`
 }
 
 func (Model) TableName() string {
@@ -323,25 +322,25 @@ func (Model) TableName() string {
 }
 
 type ModelConfig struct {
-	ID               string    `gorm:"primary_key;default:generate_uuid;size:32"`
-	MineCode         string    `gorm:"column:mine_code;size:9";not null`
-	EndID            string    `gorm:"column:end_id;size:32;ForeignKey:TEndInfo.ID;references:ID;on_delete:CASCADE"`
-	ModelInfoID      string    `gorm:"column:model_info_id;size:32;ForeignKey:TModelInfo.ID;references:ID"`
-	ModelType        string    `gorm:"column:model_type;size:7";not null`
-	ModelName        string    `gorm:"column:model_name;size:20";not null`
-	ModelVersion     string    `gorm:"column:model_version;size:20";not null`
-	ModelSubVersion  string    `gorm:"column:model_sub_version;size:10"`
-	Path             string    `gorm:"column:path;size:50";not null;default:'/home/AIAgent/models/'"`
-	ZipName          string    `gorm:"column:zip_name;size:50";not null`
-	WeightsName      string    `gorm:"column:weights_name;text"`
-	ModelDescription string    `gorm:"column:model_description;size:100";not null`
-	Flag             bool      `gorm:"column:flag"`                 // 是否下发, 未下发为0，已下发为1
-	EnableFlag       int       `gorm:"column:enable_flag;not null"` // 0 启用， 1 root禁用， 2 admin禁用
-	CreateTime       time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP"`
-	UpdateTime       time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
-	// 在Gorm中处理一对多关系需要额外定义关联模型
-	Model2VideoConfigs []Model2VideoConfig `gorm:"foreignkey:ModelConfigID"`
-	ModelMonitor       ModelMonitor        `gorm:"foreignkey:ModelConfigID"`
+	ID                 string              `gorm:"primary_key;default:generate_uuid;size:32"`
+	MineCode           string              `gorm:"column:mine_code;size:9";not null`
+	EndID              string              `gorm:"column:end_id;size:32;ForeignKey:TEndInfo.ID;references:ID;on_delete:CASCADE"`
+	ModelID            string              `gorm:"primaryKey;column:model_info_id;ForeignKey:Model.ID;references:ID;onDelete:CASCADE"`
+	ModelInfo          *Model              `gorm:"foreignKey:ModelID;references:ID;cascade:delete"`
+	ModelType          string              `gorm:"column:model_type;size:7";not null`
+	ModelName          string              `gorm:"column:model_name;size:20";not null`
+	ModelVersion       string              `gorm:"column:model_version;size:20";not null`
+	ModelSubVersion    string              `gorm:"column:model_sub_version;size:10"`
+	Path               string              `gorm:"column:path;size:50";not null;default:'/home/AIAgent/models/'"`
+	ZipName            string              `gorm:"column:zip_name;size:50";not null`
+	WeightsName        string              `gorm:"column:weights_name;text"`
+	ModelDescription   string              `gorm:"column:model_description;size:100";not null`
+	Flag               bool                `gorm:"column:flag"`                 // 是否下发, 未下发为0，已下发为1
+	EnableFlag         int                 `gorm:"column:enable_flag;not null"` // 0 启用， 1 root禁用， 2 admin禁用
+	CreateTime         time.Time           `gorm:"column:create_time;default:CURRENT_TIMESTAMP"`
+	UpdateTime         time.Time           `gorm:"column:update_time;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
+	Model2VideoConfigs []Model2VideoConfig `gorm:"foreignkey:ModelConfigID;references:ID;cascade:save"` // 在Gorm中处理一对多关系需要额外定义关联模型
+	ModelMonitor       *ModelMonitor       `gorm:"foreignkey:ModelConfigID;references:ID;cascade:save"`
 	User               string              `gorm:"column:user;size:32;ForeignKey:TUserInfo.ID;references:ID;on_delete:CASCADE"`
 
 	// 这里省略了自定义方法如model_name_and_version和model_zip_file等
@@ -355,7 +354,7 @@ func (ModelConfig) TableName() string {
 type Model2VideoConfig struct {
 	ID             string    `gorm:"primary_key;default:generate_uuid;size:32"`
 	MineCode       string    `gorm:"column:mine_code;size:9";not null`
-	ModelID        string    `gorm:"column:model_id;size:32;ForeignKey:TModelConfig.ID;references:ID;on_delete:CASCADE"`
+	ModelConfigID  string    `gorm:"column:model_id;size:32;ForeignKey:ModelConfig.ID;references:ID;on_delete:CASCADE"`
 	VideoIndex     int       `gorm:"column:video_index;not null"`
 	URL            string    `gorm:"column:url;size:200";not null`
 	VideoDescribe  string    `gorm:"column:video_describe;size:200"`
@@ -380,14 +379,14 @@ func (Model2VideoConfig) TableName() string {
 type ModelMonitor struct {
 	ID            string    `gorm:"primary_key;default:generate_uuid;size:32"`
 	MineCode      string    `gorm:"column:mine_code;size:9";not null`
-	EndID         string    `gorm:"column:end_id;size:32;ForeignKey:TEndInfo.ID;references:ID"`
-	ModelID       string    `gorm:"column:model_id;size:36;ForeignKey:TModelConfig.ID;references:ID;on_delete:CASCADE"`
+	EndID         string    `gorm:"column:end_id;size:32;ForeignKey:EndInfo.ID;references:ID"`
+	ModelConfigID string    `gorm:"column:model_id;size:36;ForeignKey:ModelConfig.ID;references:ID;on_delete:CASCADE"`
 	MonitorStatus int       `gorm:"column:monitor_status;not null"` // 0代表停止/1代表运行中
 	IsAbnormal    int       `gorm:"column:is_abnormal;not_null"`    // 1 正常 -1异常
 	CreateTime    time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP"`
 	UpdateTime    time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	// 在Gorm中处理一对多关系需要额外定义关联模型
-	Model2VideoMonitors []Model2VideoMonitor `gorm:"foreignkey:ModelID"`
+	//Model2VideoMonitors []Model2VideoMonitor `gorm:"foreignkey:ModelID"`
 }
 
 func (ModelMonitor) TableName() string {
@@ -399,8 +398,8 @@ type Model2VideoMonitor struct {
 	ID            string             `gorm:"primary_key;default:generate_uuid;size:32"`
 	MineCode      string             `gorm:"column:mine_code;size:9";not null`
 	EndID         string             `gorm:"column:end_id;size:32;ForeignKey:TEndInfo.ID;references:ID"`
-	ModelID       string             `gorm:"column:model_id;size:36;ForeignKey:TModelConfig.ID;references:ID"`
-	Model2VideoID string             `gorm:"column:model2video_id;size:36;ForeignKey:TModel2VideoConfig.ID;references:ID;on_delete:CASCADE"`
+	ModelConfigID string             `gorm:"column:model_id;size:36;ForeignKey:ModelConfig.ID;references:ID"`
+	Model2VideoID string             `gorm:"column:model2video_id;size:36;ForeignKey:Model2VideoConfig.ID;references:ID;on_delete:CASCADE"`
 	MonitorStatus int                `gorm:"column:monitor_status;not null"` // 0代表停止/1代表运行中
 	IsAbnormal    int                `gorm:"column:is_abnormal;not_null"`    // 1正常 -1异常
 	StartTime     *time.Time         `gorm:"column:start_time"`
@@ -531,4 +530,82 @@ func (m *AIModelAll) TableName() string {
 
 func (m *AIModelAll) ModelZipFilePath() string {
 	return "/home/models/ModelLibrary/" + m.ModelName
+}
+
+type BusinessModelAll struct {
+	global.CmbpModel
+	ModelName        string `gorm:"column:model_name;size:50"`
+	ModelDescription string `gorm:"column:model_description;size:100"`
+	NeedAI           bool   `gorm:"column:need_ai"`
+	BusinessParams   string `gorm:"column:business_params;text"`
+	JsonOutput       string `gorm:"column:json_output;text"`
+	User             string `gorm:"column:user;size:32"`
+	BusinessAPI      string `gorm:"column:business_api;text"`
+	BusinessPurpose  int    `gorm:"column:business_purpose"`
+	BusinessType     string `gorm:"column:business_type;text"`
+}
+
+func (BusinessModelAll) TableName() string {
+	return "t_business_model_all"
+}
+
+type Notebook struct {
+	global.CmbpModel
+	UserID         string `gorm:"not null;size:32"`
+	UUID           string `gorm:"not null;size:32"`
+	Type           int    `gorm:"nullable"`
+	Name           string `gorm:"not null;size:32"`
+	Desc           string `gorm:"size:255;default:null"`
+	URL            string `gorm:"not null"`
+	Status         int    `gorm:"nullable"`
+	ExpirationTime *int   `gorm:"nullable"`
+}
+
+func (Notebook) TableName() string {
+	return "t_notebook"
+}
+
+type ApplicationRecord struct {
+	global.CmbpModel
+	ModelID           string `gorm:"column:model_id;size:32"`
+	ApplicationStatus int    `gorm:"column:application_status"` // 99 免测申请中，100 免测申请拒绝
+	Reason            string `gorm:"size:500"`
+	User              string `gorm:"size:32"`
+	ProcessType       int
+}
+
+func (ApplicationRecord) TableName() string {
+	return "t_application_record"
+}
+
+type TestFreeModelRes struct {
+	ModelID              string                 `json:"model_id"`
+	ModelTypeDesc        string                 `json:"model_type_desc"`
+	ModelFieldDesc       string                 `json:"model_field_desc"`
+	ModelName            string                 `json:"model_name"`
+	ModelChineseName     string                 `json:"model_chinese_name"`
+	ModelVersion         string                 `json:"model_version"`
+	ModelDescription     string                 `json:"model_description"`
+	TechnicalDescription string                 `json:"technical_description"`
+	PerformanceDesc      string                 `json:"performance_desc"`
+	HardwareTypeName     string                 `json:"hardware_type_name"`
+	IsImage              string                 `json:"is_image"`
+	Cmd                  string                 `json:"cmd"`
+	JsonURL              string                 `json:"json_url"`
+	ImgURL               string                 `json:"img_url"`
+	OnBoot               string                 `json:"on_boot"`
+	NeedGPU              string                 `json:"need_gpu"`
+	AuditState           string                 `json:"audit_state"`
+	User                 string                 `json:"user"`
+	Developer            string                 `json:"developer;default:ROOT"`
+	UploadTime           string                 `json:"upload_time"`
+	BusinessDict         map[string]interface{} `json:"business_dict"`
+	ImgPath              string                 `json:"img_path"`
+	Img2Path             string                 `json:"img2_path"`
+	VideoPath            string                 `json:"video_path"`
+	Edit                 string                 `json:"edit"`
+	TestStatus           string                 `json:"test_status"`
+	Reason               string                 `json:"reason"`
+	Phone                string                 `json:"phone"`
+	ApplicationTime      time.Time              `json:"application_time"`
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type CmbpModel struct {
-	ID         string     `gorm:"primarykey" json:"ID"`                                                    // 主键ID
+	ID         string     `gorm:"primaryKey;type:varchar(32)" json:"id"`                                   // 主键ID
 	CreateTime time.Time  `gorm:"default:current_timestamp" json:"create_time"`                            // 创建时间
 	UpdateTime *time.Time `gorm:"default:current_timestamp;onUpdate:current_timestamp" json:"update_time"` // 更新时间
 }

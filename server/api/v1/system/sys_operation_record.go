@@ -147,3 +147,18 @@ func (s *OperationRecordApi) GetSysOperationRecordList(c *gin.Context) {
 		PageSize: pageInfo.PageSize,
 	}, "获取成功", c)
 }
+
+func (s *OperationRecordApi) AddFrontOpsLog(c *gin.Context) {
+	var params systemReq.AddFrontOpsLog
+	if err := c.ShouldBindJSON(&params); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	userId := utils.GetUserID(c)
+	err := operationRecordService.AddFrontOpsLog(userId, params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	} else {
+		response.Ok(c)
+	}
+}

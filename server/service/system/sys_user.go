@@ -1,15 +1,18 @@
 package system
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
+	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
 	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
-	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/system"
 	"jykj-cmbp-dev-platform/server/utils"
 )
@@ -59,7 +62,7 @@ func (userService *UserService) Login(u *system.Users) (userInter *system.Users,
 		}
 		MenuServiceApp.UserAuthorityDefaultRouter(&user)
 
-		if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(user.ExpireTime) && user.ExpireLoginNum > 0 {
+		if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(*user.ExpireTime) && user.ExpireLoginNum > 0 {
 			user.IsActive = false
 			user.RootDisable = true
 			err = global.CMBP_DB.Save(&user).Error
@@ -70,7 +73,7 @@ func (userService *UserService) Login(u *system.Users) (userInter *system.Users,
 		} else if user.IsActive == false {
 			return nil, errors.New("该用户已被管理员被禁用,请联系管理员")
 		} else {
-			if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(user.ExpireTime) {
+			if user.MineCode == "999999999" && !user.ExpireTime.IsZero() && time.Now().After(*user.ExpireTime) {
 				user.ExpireLoginNum = 1
 				err = global.CMBP_DB.Save(&user).Error
 				if err != nil {
@@ -113,17 +116,37 @@ func (userService *UserService) ChangePassword(u *system.Users, newPassword stri
 //@param: info request.PageInfo
 //@return: err error, list interface{}, total int64
 
-func (userService *UserService) GetUserInfoList(info request.PageInfo) (list interface{}, total int64, err error) {
-	limit := info.PageSize
-	offset := info.PageSize * (info.Page - 1)
-	db := global.CMBP_DB.Model(&system.SysUser{})
-	var userList []system.SysUser
-	err = db.Count(&total).Error
-	if err != nil {
-		return
+func (userService *UserService) GetUserInfoList(params systemReq.AdminGetUserList) (list interface{}, err error) {
+	var userList []systemRsp.AdminGetUserList
+	QUERY := global.CMBP_DB.Model(&system.Users{})
+	QUERY = QUERY.Joins("JOIN t_mine_register ON t_user_info.mine_code=t_mine_register.mine_code").
+		Joins("JOIN t_user_roles ON t_user_info.id=t_user_roles.user_id").
+		Joins("JOIN t_roles_info ON t_roles_info.id=t_user_roles.role_id")
+
+	if params.NameOrPhone != "" {
+		QUERY = QUERY.Where("t_user_info.username LIKE ? OR t_user_info.phone LIKE ? OR t_mine_register.mine_shortname LIKE ? OR t_mine_register.mine_fullname LIKE ?", "%"+params.NameOrPhone+"%", "%"+params.NameOrPhone+"%", "%"+params.NameOrPhone+"%", "%"+params.NameOrPhone+"%")
 	}
-	err = db.Limit(limit).Offset(offset).Preload("Authorities").Preload("Authority").Find(&userList).Error
-	return userList, total, err
+	count := int64(0)
+	err = QUERY.Count(&count).Error
+	if err != nil {
+		return nil, err
+	}
+	QUERY = QUERY.Select("t_user_info.create_time AS create_at, t_user_info.expire_time AS expire_at, t_user_info.*, t_mine_register.mine_shortname, t_roles_info.role_name AS roles, t_roles_info.id AS role_id")
+	err = QUERY.Order("root_disable DESC").Order("create_time DESC").Limit(params.Limit).Offset(params.Limit * (params.Page - 1)).Scan(&userList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range userList {
+		userList[i].RootDisable = userList[i].RootDisableInt()
+		userList[i].CreateTime = userList[i].FormatCreateTime()
+		userList[i].ExpireTime = userList[i].FormatExpireTime()
+	}
+	rspData := map[string]interface{}{
+		"count":     count,
+		"user_list": userList,
+	}
+	return rspData, err
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -322,8 +345,8 @@ func (userService *UserService) ResetPassword(ID string) (err error) {
 	return err
 }
 
-//func (UserService *UserService) UpdateUserInfo(user system.Users) (err error) {
-//	return global.CMBP_DB.Model(&system.Users{}).
+//func (UserService *UserService) UpdateUserInfo(user system.UserRoles) (err error) {
+//	return global.CMBP_DB.Model(&system.UserRoles{}).
 //		Select("updated_at", "nick_name", "header_img", "phone", "email", "sideMode", "enable").
 //		Where("id=?", req.ID).
 //		Updates(map[string]interface{}{
@@ -336,3 +359,107 @@ func (userService *UserService) ResetPassword(ID string) (err error) {
 //			"enable":     req.Enable,
 //		}).Error
 //}
+
+func (userService *UserService) CMBPDataGetUserList(phone string) (interface{}, error) {
+	if phone != "" {
+		var user system.Users
+		global.CMBP_DB.Preload("UserRoles.Role").Where("phone = ?", phone).First(&user)
+		rspData := FormatCMBPDataUserList(user)
+		return rspData, nil
+	}
+	var users []system.Users
+	global.CMBP_DB.Find(&users)
+	rspDataList := []interface{}{}
+	for _, user := range users {
+		rspData := FormatCMBPDataUserList(user)
+		rspDataList = append(rspDataList, rspData)
+	}
+	return rspDataList, nil
+}
+
+func FormatCMBPDataUserList(user system.Users) interface{} {
+	isActive := 1
+	if !user.IsActive {
+		isActive = -1
+	}
+	rspData := systemRsp.DataFactoryUserListRsp{
+		ID:         user.ID,
+		MineCode:   user.MineCode,
+		Username:   user.Username,
+		Phone:      user.Phone,
+		IsActive:   isActive,
+		Roles:      user.Roles(),
+		Email:      user.Email,
+		CreateTime: user.CreateTime.Format("2006-02-01 02:01:01"),
+	}
+	return rspData
+}
+
+func (userService *UserService) EnableUser(params systemReq.EnableUser) (interface{}, error) {
+	var user system.Users
+	err := global.CMBP_DB.Where("id = ?", params.UserId).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("用户不存在")
+	}
+	var mine system.MineRegistry
+	if user.MineCode == "" {
+		return nil, errors.New("用户煤矿编码为空")
+	}
+	mineCode := user.MineCode
+	err = global.CMBP_DB.Where("mine_code = ?", mineCode).First(&mine).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("用户所属企业不存在")
+	}
+	if params.Flag == -1 {
+		user.RootDisable = true
+		user.IsActive = false
+		userFlag := false
+		count := int64(0)
+		global.CMBP_DB.Model(&system.Users{}).Where("mine_code = ?", user.MineCode).Count(&count)
+		if count > 0 {
+			userFlag = true
+		}
+		mine.UserFlag = userFlag
+	} else {
+		if user.UpdateTime.Second()-user.CreateTime.Second() < 10 {
+			modelPath := "/home/models" + user.MineCode
+			_, err := os.Stat(modelPath)
+			if errors.Is(err, os.ErrNotExist) {
+				os.MkdirAll(modelPath, 0755)
+			} else if err != nil {
+				return nil, err
+			}
+			global.CMBP_REDIS.SAdd(context.Background(), "symmetric_register", user.MineCode)
+		}
+		user.RootDisable = false
+		user.IsActive = true
+		mine.UserFlag = true
+	}
+
+	flag := 1
+	if !user.IsActive {
+		flag = -1
+	}
+
+	rspData := []map[string]interface{}{
+		{
+			"user_id": user.ID,
+			"flag":    flag,
+		},
+	}
+
+	tx := global.CMBP_DB.Begin()
+	err = tx.Save(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	err = tx.Model(&mine).Update("user_flag", mine.UserFlag).Error
+	if err != nil {
+		return nil, err
+	}
+	err = tx.Commit().Error
+	if err != nil {
+		return nil, err
+	}
+	return rspData, nil
+}

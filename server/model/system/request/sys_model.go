@@ -66,3 +66,9 @@ type GetIndustry struct {
 	Keywords     string `form:"keywords"`
 	ModelPurpose int    `form:"model_purpose"`
 }
+
+type GetTestFreeApply struct {
+	Page       *int   `form:"page"`
+	Limit      *int   `form:"limit"`
+	NameOrDesc string `form:"name_or_desc"`
+}

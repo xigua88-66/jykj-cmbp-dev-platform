@@ -9,3 +9,9 @@ type SysOperationRecordSearch struct {
 	system.SysOperationRecord
 	request.PageInfo
 }
+
+type AddFrontOpsLog struct {
+	EnterTime string `json:"enter_time" binding:"required"`
+	LeaveTime string `json:"leave_time" binding:"required"`
+	PageName  string `json:"page_name" binding:"required"`
+}

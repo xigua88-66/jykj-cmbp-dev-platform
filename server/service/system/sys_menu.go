@@ -12,10 +12,11 @@ import (
 	"jykj-cmbp-dev-platform/server/utils"
 	"sort"
 	"strconv"
+	"sync"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)
-//@function: getUserMenuMap
+//@function: GetUserMenuMap
 //@description: 获取路由总树map
 //@param: authorityId string
 //@return: treeMap map[string][]system.SysMenu, err error
@@ -24,7 +25,8 @@ type MenuService struct{}
 
 var MenuServiceApp = new(MenuService)
 
-func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) (treeMap systemRsp.MenusList, err error) {
+func (menuService *MenuService) GetUserMenuMap(menusName string, roleId string) (rspData systemRsp.MenusList, err error) {
+	var wg sync.WaitGroup
 
 	var allmenusList []systemRsp.MenusDetail
 	var allbuttonList []systemRsp.ButtonDetail
@@ -69,42 +71,54 @@ func (menuService *MenuService) getUserMenuMap(menusName string, roleId string) 
 	}
 
 	for _, menu := range menuList {
-		var roleList []string
-		json.Unmarshal([]byte(menu.RoleList), &roleList)
-		for _, role := range roleList {
-			if roleName == role {
-				menuDetail := systemRsp.MenusDetail{
-					MenuID:      menu.ID,
-					Type:        menu.Type,
-					Name:        menu.Name,
-					Url:         menu.Url,
-					AssemblyUrl: menu.AssemblyUrl,
-					Icon:        menu.Icon,
-					IsRouting:   menu.IsRouting,
+		wg.Add(1)
+		go func(m system.Menus) {
+			defer wg.Done()
+			var roleList []string
+			json.Unmarshal([]byte(m.RoleList), &roleList)
+			for _, role := range roleList {
+				if roleName == role {
+					menuDetail := systemRsp.MenusDetail{
+						MenuID:      m.ID,
+						Type:        m.Type,
+						Name:        m.Name,
+						Url:         m.Url,
+						AssemblyUrl: m.AssemblyUrl,
+						Icon:        m.Icon,
+						IsRouting:   m.IsRouting,
+					}
+					allmenusList = append(allmenusList, menuDetail)
 				}
-				allmenusList = append(allmenusList, menuDetail)
 			}
-		}
+		}(menu)
 	}
 
 	for _, button := range buttonList {
-		var roleList []string
-		json.Unmarshal([]byte(button.RoleList), &roleList)
-		for _, role := range roleList {
-			if roleName == role {
-				buttonDetail := systemRsp.ButtonDetail{
-					MenuID:      button.ID,
-					Type:        button.Type,
-					Name:        button.Name,
-					Url:         button.Url,
-					AssemblyUrl: button.AssemblyUrl,
-					Icon:        button.Icon,
-					IsRouting:   button.IsRouting,
+		wg.Add(1)
+		go func(b system.Menus) {
+			defer wg.Done()
+			var roleList []string
+			json.Unmarshal([]byte(b.RoleList), &roleList)
+			for _, role := range roleList {
+				if roleName == role {
+					buttonDetail := systemRsp.ButtonDetail{
+						MenuID:      b.ID,
+						Type:        b.Type,
+						Name:        b.Name,
+						Url:         b.Url,
+						AssemblyUrl: b.AssemblyUrl,
+						Icon:        b.Icon,
+						IsRouting:   b.IsRouting,
+					}
+					allbuttonList = append(allbuttonList, buttonDetail)
 				}
-				allbuttonList = append(allbuttonList, buttonDetail)
 			}
-		}
+		}(button)
 	}
+
+	// 等待所有goroutine完成
+	wg.Wait()
+
 	return systemRsp.MenusList{Button: allbuttonList, Menu: allmenusList}, err
 }
 
@@ -169,7 +183,7 @@ func (menuService *MenuService) GetMenuTreeMap(c *gin.Context) (treeMap interfac
 //@return: menus []system.SysMenu, err error
 
 func (menuService *MenuService) GetUserMenu(menusName string, roleId string) (menus systemRsp.MenusList, err error) {
-	menuTree, err := menuService.getUserMenuMap(menusName, roleId)
+	menuTree, err := menuService.GetUserMenuMap(menusName, roleId)
 	//menus = menuTree["0"]
 	//for i := 0; i < len(menus); i++ {
 	//	err = menuService.getChildrenList(&menus[i], menuTree)

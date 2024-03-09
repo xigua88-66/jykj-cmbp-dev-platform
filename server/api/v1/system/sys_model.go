@@ -133,3 +133,46 @@ func (m *ModelOptionApi) GetIndustry(c *gin.Context) {
 		response.OkWithData(rspData, c)
 	}
 }
+
+func (m *ModelOptionApi) UnPublishModel(c *gin.Context) {
+	uuid := c.Query("uuid")
+	if uuid == "" {
+		response.FailWithMessage("未检测到参数uuid", c)
+	}
+	token := utils.GetToken(c)
+	err := modelService.UnPublishModel(uuid, token)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	} else {
+		response.OkWithDetailed(nil, "删除成功", c)
+	}
+}
+
+func (m *ModelOptionApi) CancelUpload(c *gin.Context) {
+	uuid := c.Query("uuid")
+	if uuid == "" {
+		response.FailWithMessage("未检测到uuid参数", c)
+	}
+	userID := utils.GetUserID(c)
+	err := modelService.CancelUpload(uuid, userID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	} else {
+		response.Ok(c)
+	}
+}
+
+func (m *ModelOptionApi) GetTestFreeApplication(c *gin.Context) {
+	var params systemReq.GetTestFreeApply
+	c.BindQuery(&params)
+	rspData, err := modelService.GetTestFreeApplication(params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	} else {
+		response.OkWithData(rspData, c)
+	}
+}
+
+func (m *ModelOptionApi) PostTestFreeApplication(c *gin.Context) {
+
+}

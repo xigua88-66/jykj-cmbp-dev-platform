@@ -5,6 +5,7 @@ import (
 	"jykj-cmbp-dev-platform/server/model/common/request"
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
+	"time"
 )
 
 //@author: [granty1](https://github.com/granty1)
@@ -83,4 +84,26 @@ func (operationRecordService *OperationRecordService) GetSysOperationRecordInfoL
 	}
 	err = db.Order("id desc").Limit(limit).Offset(offset).Preload("User").Find(&sysOperationRecords).Error
 	return sysOperationRecords, total, err
+}
+
+func (operationRecordService *OperationRecordService) AddFrontOpsLog(userId string, params systemReq.AddFrontOpsLog) error {
+	var user system.Users
+	global.CMBP_DB.Where("id = ?", userId).Where("is_active = true").First(&user)
+
+	// 解析时间字符串为time.Time类型
+	enterTime, err := time.ParseInLocation("2006-1-2 15:04:05", params.EnterTime, time.Local)
+	if err != nil {
+		return err
+	}
+	leaveTime, err := time.ParseInLocation("2006-1-2 15:04:05", params.LeaveTime, time.Local)
+	if err != nil {
+		return err
+	}
+	frontLog := system.FrontLog{MineCode: user.MineCode, Username: user.Username, PageName: params.PageName, EnterTime: enterTime, LeaveTime: leaveTime, CreateTime: time.Now()}
+	err = global.CMBP_DB.Create(&frontLog).Error
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
 }
