@@ -41,6 +41,7 @@ func (s *UserRouter) InitNotAuthRouter(Router *gin.RouterGroup) {
 	userRouter := Router
 	baseApi := v1.ApiGroupApp.SystemApiGroup.BaseApi
 	{
-		userRouter.GET("/v1.0/getusername", baseApi.GetUserName) // 数据工厂获取用户名
+		userRouter.GET("/v1.0/getusername", baseApi.GetUserName)     // 数据工厂获取用户名
+		userRouter.POST("/v1.0/user_register", baseApi.UserRegister) //开发者注册
 	}
 }

@@ -19,4 +19,5 @@ var (
 	GetUserTicketsVerify   = Rules{"category": {NotEmpty()}}
 	ModelFieldVerify       = Rules{"Flag": {NotEmpty()}}
 	GetModelListVerify     = Rules{"Page": {NotEmpty()}, "LIMIT": {NotEmpty()}}
+	UserRegisterVerify     = Rules{"Username": {NotEmpty()}, "Password": {NotEmpty()}, "Email": {NotEmpty(), RegexpMatch("^([a-zA-Z0-9]+)@[a-zA-Z0-9]+\\.[a-zA-Z]{3}$")}}
 )

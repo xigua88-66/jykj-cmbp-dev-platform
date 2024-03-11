@@ -58,7 +58,7 @@ func (userService *UserService) Login(u *system.Users) (userInter *system.Users,
 
 	if err == nil {
 		if ok := utils.BcryptCheck(u.Password, user.Password); !ok {
-			return nil, errors.New("密码错误")
+			return nil, errors.New("用户名或密码错误")
 		}
 		MenuServiceApp.UserAuthorityDefaultRouter(&user)
 
@@ -284,7 +284,7 @@ func (userService *UserService) GetUserInfo(uid string, userId string) (user map
 
 	var expireTime string
 	var lastDays = 99999
-	if !reqUser.ExpireTime.IsZero() {
+	if reqUser.ExpireTime != nil {
 		expireTime = reqUser.ExpireTime.Format("2006-01-02 15:04:05") // 格式化时间或者以你需要的方式使用
 		now := time.Now()
 		duration := reqUser.ExpireTime.Sub(now)
@@ -297,7 +297,7 @@ func (userService *UserService) GetUserInfo(uid string, userId string) (user map
 		"role":          role,
 		"mine":          mine.MineShortname,
 		"phone":         reqUser.Phone,
-		"emial":         reqUser.Email,
+		"email":         reqUser.Email,
 		"expire_time":   expireTime,
 		"last_days":     lastDays,
 		"mine_code":     reqUser.MineCode,
@@ -462,4 +462,56 @@ func (userService *UserService) EnableUser(params systemReq.EnableUser) (interfa
 		return nil, err
 	}
 	return rspData, nil
+}
+
+func (userService *UserService) UserRegister(params systemReq.UserRegister) error {
+	var user system.Users
+	if params.Phone != "" && !errors.Is(global.CMBP_DB.Where("phone = ?", params.Phone).First(&user).Error, gorm.ErrRecordNotFound) {
+		return errors.New("该手机号已注册，请更改手机号")
+	} else if !errors.Is(global.CMBP_DB.Where("username = ?", params.Username).First(&user).Error, gorm.ErrRecordNotFound) {
+		return errors.New("该用户名已注册，请更改用户名")
+	}
+	role := "MODEL"
+	if params.Role != "" {
+		role = params.Role
+	}
+
+	var roleObj system.Roles
+	global.CMBP_DB.Where("name = ?", role).First(&roleObj)
+
+	mineCode := "000000001"
+	if params.MineCode != "" {
+		mineCode = params.MineCode
+	}
+	phone := params.Username
+	if params.Phone != "" {
+		phone = params.Phone
+	}
+
+	us := system.Users{
+		MineCode:       mineCode,
+		Username:       params.Username,
+		Password:       utils.BcryptHash(params.Password),
+		Email:          params.Email,
+		Phone:          phone,
+		IsActive:       false,
+		RootDisable:    true,
+		ExpireTime:     nil,
+		ExpireLoginNum: uint8(0),
+		DingAccount:    &params.Phone,
+	}
+	global.CMBP_DB.Create(&us)
+	if roleObj.ID != "" {
+		userRole := system.UserRoles{
+			UserID:   us.ID,
+			RoleID:   roleObj.ID,
+			MineCode: mineCode,
+		}
+		global.CMBP_DB.Create(&userRole)
+	}
+	err := global.CMBP_DB.Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

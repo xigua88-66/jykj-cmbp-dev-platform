@@ -102,7 +102,9 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 		return
 	}
 
-	global.CMBP_DB.Model(&user).Update("token", token[len(token)-127:])
+	//global.CMBP_DB.Model(&user).Update("token", token[len(token)-127:])
+	user.Token = token[len(token)-127:]
+	global.CMBP_DB.Save(&user)
 
 	// 不允许多点登录
 	if !global.CMBP_CONFIG.System.UseMultipoint {
@@ -541,4 +543,24 @@ func (b *BaseApi) GetUserName(c *gin.Context) {
 	}
 	response.OkWithData(rspData, c)
 	return
+}
+
+func (b *BaseApi) UserRegister(c *gin.Context) {
+	var params systemReq.UserRegister
+	err := c.ShouldBindJSON(&params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = utils.Verify(params, utils.UserRegisterVerify)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = userService.UserRegister(params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	} else {
+		response.Ok(c)
+	}
 }

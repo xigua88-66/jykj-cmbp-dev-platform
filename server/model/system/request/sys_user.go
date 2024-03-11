@@ -67,3 +67,12 @@ type AdminGetUserList struct {
 	Page        int    `form:"page" binding:"required"`
 	NameOrPhone string `form:"name_or_phone"`
 }
+
+type UserRegister struct {
+	Username string `json:"username"`
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	MineCode string `json:"mine_code"`
+}
