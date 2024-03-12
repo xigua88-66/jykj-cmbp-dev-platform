@@ -20,4 +20,7 @@ var (
 	ModelFieldVerify       = Rules{"Flag": {NotEmpty()}}
 	GetModelListVerify     = Rules{"Page": {NotEmpty()}, "LIMIT": {NotEmpty()}}
 	UserRegisterVerify     = Rules{"Username": {NotEmpty()}, "Password": {NotEmpty()}, "Email": {NotEmpty(), RegexpMatch("^([a-zA-Z0-9]+)@[a-zA-Z0-9]+\\.[a-zA-Z]{3}$")}}
+	UploadModelStoreVerify = Rules{"ModelName": {NotEmpty()}, "UUID": {NotEmpty()}, "ModelVersion": {NotEmpty()}, "ModelDescription": {NotEmpty()},
+		"ModelType": {NotEmpty()}, "IsImage": {NotEmpty()}, "Cmd": {NotEmpty()}, "JsonUrl": {NotEmpty()}, "ImgUrl": {NotEmpty()},
+		"OnBoot": {NotEmpty()}, "NeedGPU": {NotEmpty()}, "TaskID": {NotEmpty()}, "AlgorithmID": {NotEmpty()}}
 )

@@ -102,7 +102,6 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 		return
 	}
 
-	//global.CMBP_DB.Model(&user).Update("token", token[len(token)-127:])
 	user.Token = token[len(token)-127:]
 	global.CMBP_DB.Save(&user)
 

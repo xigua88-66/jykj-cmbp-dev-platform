@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid/v5"
 	"gorm.io/gorm"
+	"io"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
 	"jykj-cmbp-dev-platform/server/utils"
+	"mime/multipart"
 	"os"
 	"sort"
 	"strconv"
@@ -798,6 +800,123 @@ func FormatBusParams(model system.ModelAll) []map[string]interface{} {
 	}
 
 	return businessList
+}
+
+func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreReq, videoFile, imgFile *multipart.FileHeader, userId string) (map[string]string, error) {
+	if params.BusinessDict != "" {
+		var busDict interface{}
+		err := json.Unmarshal([]byte(params.BusinessDict), &busDict)
+		if err != nil {
+			return nil, errors.New("business_dict json解析失败 ：" + err.Error())
+		}
+		_, ok := busDict.([]interface{})
+		if !ok {
+			return nil, errors.New("business_dict不符合规则")
+		}
+	}
+	var m system.ModelAll
+	global.CMBP_DB.Where("model_name = ?", params.ModelName).Where("model_version = ?", params.ModelVersion).First(&m)
+
+	if m.ID != "" {
+		return nil, errors.New("模型重复")
+	}
+
+	modelDir := fmt.Sprintf("/home/OBS/models/models/%s/", params.ModelName+"V"+params.ModelVersion) // TODO
+
+	_, err := os.Stat(modelDir)
+	if errors.Is(err, os.ErrNotExist) {
+		err = os.MkdirAll(modelDir, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	mediaDir := "/home/OBS/models/models_media"
+	_, err = os.Stat(mediaDir)
+	if errors.Is(err, os.ErrNotExist) {
+		err = os.MkdirAll(mediaDir, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	//processor := "x86"
+	//armHardWare := []string{"1", "3", "5", "7", "14", "30", "91", "100"}
+	//for _, h := range armHardWare {
+	//	if params.HardwareType == h {
+	//		processor = "arm"
+	//		break
+	//	}
+	//}
+
+	//err = SaveSliceFile(params, userId)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	randStr := utils.UniqueRandomStr()
+	encryptStr := utils.Encrypt(randStr, true)
+	fmt.Println(encryptStr)
+
+	// 将保存的压缩包解压到"/home/tmp/userId/uuid"下面
+	tmpPath := fmt.Sprintf("/home/tmp/%s/", userId)
+	_, err = os.Stat(tmpPath)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(tmpPath, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	targetPath := tmpPath + params.UUID
+	global.CMBP_REDIS.Set(context.Background(), params.UUID, 1, 36000)
+	utils.Unzip()
+	return nil, nil
+}
+
+func SaveSliceFile(params systemReq.UploadModelStoreReq, userId string) error {
+	destFilePath := "/home/models/fileSave/" + userId + "/" + params.ModelName + "V" + params.ModelVersion + ".zip"
+	zf, err := os.Create(destFilePath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		// 在函数退出前尝试关闭zip文件
+		if err := zf.Close(); err != nil {
+			fmt.Println("Error closing zip file:", err)
+		}
+	}()
+
+	chunk := 0
+	for {
+		sourceFilePath := "/home/models/fileSave/" + userId + "/" + params.TaskID + strconv.Itoa(chunk)
+		if _, err := os.Stat(sourceFilePath); os.IsNotExist(err) {
+			if chunk == 0 {
+				return errors.New("分片文件不存在" + sourceFilePath)
+			} else {
+				break
+			}
+		}
+		fileToAppend, err := os.Open(sourceFilePath)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(zf, fileToAppend)
+		if err != nil {
+			return err
+		}
+		err = fileToAppend.Close()
+		if err != nil {
+			return err
+		}
+
+		err = os.Remove(sourceFilePath)
+		if err != nil {
+			fmt.Println("分配片删除失败：", err.Error())
+		}
+		chunk++
+	}
+	return nil
 }
 
 func (modelService *ModelService) GetAutoUpdateTask(userID string) (rspData map[string]interface{}, err error) {

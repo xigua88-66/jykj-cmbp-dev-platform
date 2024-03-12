@@ -18,6 +18,7 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouter.GET("/v1.4/modelfield", modelsApi.GetModelField)      // 获取model小类
 		modelsRouter.GET("/v1.12/model_list", modelsApi.GetModelList)      // 模型市场
 		modelsRouter.GET("/v1.2/models", modelsApi.GetModelStore)          // 模型仓库
+		modelsRouter.POST("/v1.2/model", modelsApi.UploadModel)            // 模型仓库
 		modelsRouter.DELETE("/v1.6/cancel_upload", modelsApi.CancelUpload) // 模型仓库
 
 		modelsRouterV15.GET("get_hardware_info", modelsApi.GetHardware)                  // 获取硬件分类

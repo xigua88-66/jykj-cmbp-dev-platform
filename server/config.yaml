@@ -1,4 +1,4 @@
-# github.com/flipped-aurora/gin-vue-admin/server Global Configuration
+# github.com/xigua88-66/jykj-cmbp-dev-platform/server Global Configuration
 
 # jwt configuration
 jwt:
@@ -10,7 +10,7 @@ jwt:
 zap:
   level: info
   format: console
-  prefix: "[github.com/flipped-aurora/gin-vue-admin/server]"
+  prefix: "[github.com/xigua88-66/jykj-cmbp-dev-platform/server]"
   director: log
   show-line: true
   encode-level: LowercaseColorLevelEncoder

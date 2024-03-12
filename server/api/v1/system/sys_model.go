@@ -7,6 +7,8 @@ import (
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"jykj-cmbp-dev-platform/server/utils"
+	"path"
+	"strings"
 )
 
 type ModelOptionApi struct {
@@ -79,6 +81,60 @@ func (m *ModelOptionApi) GetModelStore(c *gin.Context) {
 		response.OkWithData(modelStore, c)
 		return
 	}
+}
+
+func (m *ModelOptionApi) UploadModel(c *gin.Context) {
+	var params systemReq.UploadModelStoreReq
+
+	err := c.ShouldBind(&params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = utils.Verify(params, utils.UploadModelStoreVerify)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	videoFile, err := c.FormFile("video_file")
+	if err != nil {
+		msg := "视频文件不能为空"
+		if !strings.Contains(err.Error(), "http: no such file") {
+			msg = err.Error()
+		}
+		response.FailWithMessage(msg, c)
+		return
+	}
+	imgFile, err := c.FormFile("model_img")
+	if err != nil {
+		msg := "图片文件不能为空"
+		if !strings.Contains(err.Error(), "http: no such file") {
+			msg = err.Error()
+		}
+		response.FailWithMessage(msg, c)
+		return
+	}
+	ext := path.Ext(videoFile.Filename)
+	if ext == "" || strings.ToUpper(ext[1:]) != "MP4" {
+		response.FailWithMessage("视频格式应为mp4", c)
+		return
+	}
+	ext = path.Ext(imgFile.Filename)
+	if ext == "" || strings.ToUpper(ext[1:]) != "JPG" {
+		response.FailWithMessage("图片格式应为jpg", c)
+		return
+	}
+	userId := utils.GetUserID(c)
+	rspData, err := modelService.UploadModel(params, videoFile, imgFile, userId)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	} else {
+		response.OkWithData(rspData, c)
+		return
+	}
+
 }
 
 func (m *ModelOptionApi) GetAutoUpdateEnd(c *gin.Context) {
