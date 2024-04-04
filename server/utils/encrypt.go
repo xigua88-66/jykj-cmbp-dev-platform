@@ -2,7 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"jykj-cmbp-dev-platform/server/global"
 	"math/rand"
+	"os"
+	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -151,4 +155,74 @@ func ReverseInt(a []int) []int {
 		a[i], a[j] = a[j], a[i]
 	}
 	return a
+}
+
+func Py2So(dest, encryptFile, processor string) error {
+	py2Ccmd := fmt.Sprintf("/cmbp/Python370/bin/cython -3 %s", encryptFile)
+	if processor == "arm" {
+		py2Ccmd = fmt.Sprintf("cython -3 %s", encryptFile)
+	}
+	pythonDesc := "/cmbp/Python352/include/python3.5m"
+	if processor == "arm" {
+		pythonDesc = "/usr/local/include/python3.5m"
+	}
+	c2soCmd := fmt.Sprintf("gcc -shared -pthread -fPIC  -I %s -o %s.so %s.c", pythonDesc, encryptFile[:len(encryptFile)-3], encryptFile[:len(encryptFile)-3])
+
+	rmPySoCmd := fmt.Sprintf("rm -f %s %s.c", encryptFile, encryptFile[:len(encryptFile)-3])
+
+	Cmd := fmt.Sprintf("cd %s && %s && %s && %s", dest, py2Ccmd, c2soCmd, rmPySoCmd)
+
+	if processor == "arm" {
+		Cmd = fmt.Sprintf("/bin/bash -c 'cd %s && %s && %s && %s'", dest, py2Ccmd, c2soCmd, rmPySoCmd)
+	}
+
+	if processor == "x86" {
+		cmd := exec.Command("/bin/bash", "-c", Cmd)
+		out, err := cmd.Output()
+		if err != nil {
+			global.CMBP_LOG.Fatal(err.Error())
+			return err
+		}
+		global.CMBP_LOG.Info("py转so成功" + string(out))
+		return nil
+	} else if processor == "arm" {
+		cmd := exec.Command("docker", "exec", "python-arrch64", "/bin/bash", "-c", Cmd)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			global.CMBP_LOG.Fatal(err.Error())
+			return err
+		} else {
+			global.CMBP_LOG.Info("arm-py转so成功")
+			return nil
+		}
+	}
+	return nil
+}
+
+func AddEncryptFile(dest, zipPasswd, processor string) (string, error) {
+	encrypted := Encrypt(zipPasswd, true)
+	encryptFile := "encrypt.py"
+	file, _ := os.Create(path.Join(dest, encryptFile))
+	_, err := file.WriteString(fmt.Sprintf("ciphertext = '%s'", encrypted))
+	if err != nil {
+		return "", err
+	}
+	err = Py2So(dest, encryptFile, processor)
+	if err != nil {
+		return "", err
+	}
+
+	license, _ := os.Create(path.Join(dest, "license.init"))
+	_, err = license.WriteString("HOST_ID|APP_ID")
+	if err != nil {
+		return "", err
+	}
+	//Cmd := fmt.Sprintf("cd %s && zip -r -1 -P %s license.zip license.init && rm -f license.init", dest, zipPasswd)
+	Cmd := fmt.Sprintf(`cd "%s" && zip -r -1 -P %s license.zip license.init && rm -f license.init`, dest, zipPasswd)
+	cmd := exec.Command("/bin/bash", "-c", Cmd)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return string(encrypted), nil
 }

@@ -19,7 +19,7 @@ zap:
 
 # redis configuration
 redis:
-  db: 14
+  db: 1
   addr: 172.24.3.26:6379
   password: "password01!"
 

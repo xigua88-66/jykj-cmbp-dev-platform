@@ -2,6 +2,7 @@ package system
 
 import (
 	"jykj-cmbp-dev-platform/server/global"
+	"path/filepath"
 	"time"
 )
 
@@ -131,7 +132,7 @@ type ModelType struct {
 	ModelFieldID   string  `gorm:"ForeignKey:ModelFieldID;references:id on delete:CASCADE" json:"-"`
 
 	// 外键关联，定义模型领域与模型类型的关系
-	ModelField *ModelField `gorm:"constraint:OnDelete:CASCADE;"`
+	ModelField ModelField `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (ModelType) TableName() string {
@@ -576,6 +577,47 @@ type ApplicationRecord struct {
 
 func (ApplicationRecord) TableName() string {
 	return "t_application_record"
+}
+
+type DataAnalyzeModelAll struct {
+	global.CmbpModel
+	ModelName        string `gorm:"not null;size:50" json:"model_name"`
+	ModelChineseName string `gorm:"size:50" json:"model_chinese_name"`
+	ModelDescription string `gorm:"not null;size:100" json:"model_description"`
+	Env              string `gorm:"default:null;size:500" json:"env"`
+	Vol              string `gorm:"default:null;size:500" json:"vol"`
+	Port             string `gorm:"default:null;size:500" json:"port"`
+	Extra            string `gorm:"default:null;size:500" json:"extra"`
+	Cmd              string `gorm:"not null;size:500" json:"cmd"`
+	AIModelAPI       string `gorm:"type:text;nullable" json:"ai_model_api"`
+	AIModelPurpose   *int   `gorm:"column:ai_model_purpose;nullable" json:"ai_model_purpose"`
+	Params           string `gorm:"default:null;type:text" json:"params"`
+	User             string `gorm:"size:32" json:"user"`
+	ConfigJSON       string `gorm:"default:null;type:text" json:"config_json"`
+	// 自定义方法
+	//ModelZipFile func() string `json:"-"`
+}
+
+func (d *DataAnalyzeModelAll) ModelZipFile() string {
+	return filepath.Join("/home/models/DataAnalyzeModelLibrary", d.ModelName)
+}
+
+func (d *DataAnalyzeModelAll) TableName() string {
+	return "t_data_analyze_model_all"
+}
+
+type WeightsManagement struct {
+	global.CmbpModel
+	WeightsName    string `gorm:"not null;size:255" json:"weights_name" doc:"权重名称"`
+	WeightsDesc    string `gorm:"size:500" json:"weights_desc" doc:"权重描述"`
+	WeightsCreator string `gorm:"not null;size:32" json:"weights_creator" doc:"权重创建者"`
+	UserName       string `gorm:"size:32" json:"user_name" doc:"创建者名称"`
+	WeightsFile    string `gorm:"not null;size:32" json:"weights_file" doc:"文件名"`
+	WeightsType    int    `gorm:"not null" json:"weights_type" doc:"权重类型"`
+}
+
+func (WeightsManagement) TableName() string {
+	return "t_weights_management"
 }
 
 type TestFreeModelRes struct {

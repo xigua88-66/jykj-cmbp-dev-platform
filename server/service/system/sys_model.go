@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/client"
 	"github.com/gofrs/uuid/v5"
 	"gorm.io/gorm"
 	"io"
@@ -15,9 +16,13 @@ import (
 	"jykj-cmbp-dev-platform/server/utils"
 	"mime/multipart"
 	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -111,7 +116,7 @@ func (modelService *ModelService) GetModelField(params systemReq.ModelFiled) (da
 
 				var modelType []system.ModelType
 				if typeCode != nil {
-					err = global.CMBP_DB.Model(&system.ModelType{}).
+					err = global.CMBP_DB.Preload("ModelField").Model(&system.ModelType{}).
 						Where("model_field_id = ?", modelField.ID).
 						Where("model_type in ?", typeCode).
 						Find(&modelType).Error
@@ -119,7 +124,7 @@ func (modelService *ModelService) GetModelField(params systemReq.ModelFiled) (da
 						return nil, err
 					}
 				} else {
-					err = global.CMBP_DB.Model(&system.ModelType{}).
+					err = global.CMBP_DB.Preload("ModelField").Model(&system.ModelType{}).
 						Where("model_field_id = ?", modelField.ID).
 						Find(&modelType).Error
 					if err != nil {
@@ -151,7 +156,10 @@ func (modelService *ModelService) GetModelField(params systemReq.ModelFiled) (da
 				combinedKeyJ := fieldCodeRight + sceneCodeRight
 				return combinedKeyI < combinedKeyJ
 			})
-			return typeRspList, nil
+
+			rspData := []interface{}{}
+			rspData = append(rspData, typeRspList)
+			return rspData, nil
 		} else {
 			if params.IndustryCode != nil {
 				QUERY = QUERY.Where("industry_code = ?", params.IndustryCode).Order("code")
@@ -803,16 +811,16 @@ func FormatBusParams(model system.ModelAll) []map[string]interface{} {
 }
 
 func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreReq, videoFile, imgFile *multipart.FileHeader, userId string) (map[string]string, error) {
+	var busListDict []map[string]interface{}
 	if params.BusinessDict != "" {
-		var busDict interface{}
-		err := json.Unmarshal([]byte(params.BusinessDict), &busDict)
+		err := json.Unmarshal([]byte(params.BusinessDict), &busListDict)
 		if err != nil {
 			return nil, errors.New("business_dict json解析失败 ：" + err.Error())
 		}
-		_, ok := busDict.([]interface{})
-		if !ok {
-			return nil, errors.New("business_dict不符合规则")
-		}
+		//_, ok := busListDict.([]interface{})
+		//if !ok {
+		//	return nil, errors.New("business_dict不符合规则")
+		//}
 	}
 	var m system.ModelAll
 	global.CMBP_DB.Where("model_name = ?", params.ModelName).Where("model_version = ?", params.ModelVersion).First(&m)
@@ -821,7 +829,9 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 		return nil, errors.New("模型重复")
 	}
 
-	modelDir := fmt.Sprintf("/home/OBS/models/models/%s/", params.ModelName+"V"+params.ModelVersion) // TODO
+	modelName := params.ModelName + "V" + params.ModelVersion
+	// OBS模型存放目录
+	modelDir := fmt.Sprintf("/home/OBS/models/models/%s/", modelName) // TODO
 
 	_, err := os.Stat(modelDir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -831,6 +841,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 		}
 	}
 
+	// 图片和视频保存目录 #/home/models/models
 	mediaDir := "/home/OBS/models/models_media"
 	_, err = os.Stat(mediaDir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -840,23 +851,12 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 		}
 	}
 
-	//processor := "x86"
-	//armHardWare := []string{"1", "3", "5", "7", "14", "30", "91", "100"}
-	//for _, h := range armHardWare {
-	//	if params.HardwareType == h {
-	//		processor = "arm"
-	//		break
-	//	}
-	//}
-
-	//err = SaveSliceFile(params, userId)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	randStr := utils.UniqueRandomStr()
-	encryptStr := utils.Encrypt(randStr, true)
-	fmt.Println(encryptStr)
+	// 大文件切片保存 /home/models/fileSave/用户id/
+	modelZipPath := "/home/models/fileSave/" + userId + "/" + modelName + ".zip"
+	err = SaveSliceFile(params.TaskID, userId, modelZipPath)
+	if err != nil {
+		return nil, err
+	}
 
 	// 将保存的压缩包解压到"/home/tmp/userId/uuid"下面
 	tmpPath := fmt.Sprintf("/home/tmp/%s/", userId)
@@ -869,14 +869,337 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 	}
 
 	targetPath := tmpPath + params.UUID
-	global.CMBP_REDIS.Set(context.Background(), params.UUID, 1, 36000)
-	utils.Unzip()
-	return nil, nil
+	global.CMBP_REDIS.Set(context.Background(), params.UUID, 1, 3600*time.Second)
+	_, err = utils.Unzip(modelZipPath, targetPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.RemoveAll(modelZipPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// 拷贝End到模型临时目录下
+	err = utils.CopyDir("/home/models/AIMonitorEnd", targetPath)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_REDIS.Set(context.Background(), modelName, 1, 3600*time.Second)
+
+	// 生成加密Python文件
+	isDataModel := 0
+	dirList, err := os.ReadDir(targetPath)
+	if !(len(dirList) == 1 && dirList[0].Name() == "app") {
+		isDataModel = 1
+	}
+	dirTree := utils.GetDirTree(targetPath, targetPath, isDataModel)
+	jsonTree, err := utils.TreeToJson(dirTree)
+	err = global.CMBP_REDIS.Set(context.Background(), fmt.Sprintf("%s_AIModel_tmp_dirs", params.UUID), jsonTree, 3600*time.Second).Err()
+	if err != nil {
+		return nil, err
+	}
+
+	// copy到model_warehouse
+	modelWareHouse := fmt.Sprintf("/home/model_warehouse/%s", modelName)
+
+	_, err = os.Stat(modelWareHouse)
+	if os.IsExist(err) {
+		err = os.Remove(modelWareHouse)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 更新模型可编辑代码到model_warehouse
+	err = utils.CopyDir(targetPath, modelWareHouse)
+	if err != nil {
+		return nil, errors.New("模型仓库model_warehouse拷贝失败: " + err.Error())
+	}
+
+	processor := "x86"
+	armHardWare := []int{1, 3, 5, 7, 14, 30, 91, 100}
+	for _, h := range armHardWare {
+		if params.HardwareType == h {
+			processor = "arm"
+			break
+		}
+	}
+	// 生成加密文件并转so
+	randStr := utils.UniqueRandomStr()
+	encrypted, err := utils.AddEncryptFile(targetPath, randStr, processor)
+	if err != nil {
+		return nil, errors.New("model添加加密文件失败" + err.Error())
+	}
+
+	// 上传plugins到OBS
+	pluginsPath := path.Join(targetPath, "plugins")
+	_, err = os.Stat(pluginsPath)
+	if os.IsExist(err) {
+		os.RemoveAll(pluginsPath)
+	}
+	err = os.MkdirAll(pluginsPath, 0755)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_REDIS.Set(context.Background(), params.UUID+"plugins", 1, 3600*time.Second)
+	err = utils.CopyEnd(pluginsPath, randStr, processor)
+	if err != nil {
+		return nil, err
+	}
+	py2so := utils.Plugins2So(targetPath, processor)
+
+	if !py2so {
+		return nil, errors.New("业务模型转换so失败")
+	}
+	exists, _ := utils.PathExists(targetPath + "plugins/plugins")
+	if exists {
+		err = os.RemoveAll(targetPath + "plugins/plugins")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = utils.CopyDir(pluginsPath, targetPath+"plugins/plugins")
+	if err != nil {
+		return nil, err
+	}
+	// 压缩plugin目录
+	err = utils.CompressZip(pluginsPath, modelDir, modelName, false)
+	if err != nil {
+		return nil, errors.New("压缩plugins目录失败：" + err.Error())
+	}
+	global.CMBP_REDIS.Del(context.Background(), params.UUID+"plugins")
+
+	// 上传AIModel到OBS
+	AiModelPath := fmt.Sprintf("/home/tmp/%s/%s/", userId, params.UUID+"AIModel")
+	os.Mkdir(AiModelPath, 0755)
+	global.CMBP_REDIS.Set(context.Background(), params.UUID+"AIModel", 1, 3600*time.Second)
+	err = utils.CopyEnd(AiModelPath, randStr, processor)
+	if err != nil {
+		return nil, err
+	}
+
+	zipCmd := fmt.Sprintf("cd /home/tmp/%s/%s/AIModel && zip -r -1 -P %s AIModel.zip * && mv AIModel.zip ..", userId, params.UUID, randStr)
+
+	// 创建命令
+	command := exec.Command("/bin/bash", "-c", zipCmd)
+
+	// 执行命令
+	output, err := command.CombinedOutput()
+	if err != nil {
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			waitStatus := exitError.Sys().(syscall.WaitStatus)
+			if waitStatus.ExitStatus() == 1 {
+				return nil, errors.New("识别模型包压缩失败：" + err.Error() + string(output))
+			}
+		}
+		fmt.Printf("执行命令时出现错误: %v, 输出: %s\n", err, output)
+	}
+	// 如果命令执行成功，这里可以继续处理其他逻辑
+	fmt.Println("识别模型包压缩成功")
+
+	err = utils.FileCopy(fmt.Sprintf("/home/tmp/%s/%s/AIModel.zip", userId, params.UUID), fmt.Sprintf("/home/tmp/%s/%sAIModel/AIModel.zip", userId, params.UUID))
+	if err != nil {
+		return nil, errors.New("识别模型拷贝失败: " + err.Error())
+	}
+	utils.CompressZip(AiModelPath, modelDir, modelName+"AIModel", false)
+	global.CMBP_REDIS.Del(context.Background(), params.UUID+"AIModel")
+
+	// 压缩完整的模型包
+	utils.CompressZip(targetPath, modelDir, modelName, false)
+	global.CMBP_REDIS.Del(context.Background(), modelName+".zip")
+
+	// docker镜像压缩
+	runTimePath := fmt.Sprintf("/home/tmp/%s/%s/", userId, params.UUID+"Runtime")
+	if params.IsImage != nil && *params.IsImage == 1 {
+		os.MkdirAll(runTimePath, 0755)
+		global.CMBP_REDIS.Set(context.Background(), params.UUID+"Runtime", 1, 3600*time.Second)
+		utils.CopyEnd(runTimePath, "", "")
+		os.ReadDir(targetPath)
+
+		for _, f := range dirList {
+			if len(f.Name()) > 4 && f.Name()[len(f.Name())-4:] == ".tar" {
+				utils.FileCopy(filepath.Join(targetPath, f.Name()), runTimePath)
+				break
+			}
+		}
+		global.CMBP_REDIS.Set(context.Background(), modelName+"Runtime.zip", 1, 3600*time.Second)
+		runTimeZipCmd := fmt.Sprintf("cd /home/tmp/%s/%s && zip -r -1 ../%s.zip *", userId, params.UUID+"Runtime", modelName+"Runtime")
+
+		command = exec.Command("/bin/bash", "-c", runTimeZipCmd)
+
+		// 执行命令
+		output, err = command.CombinedOutput()
+		if err != nil {
+			exitError, ok := err.(*exec.ExitError)
+			if ok {
+				waitStatus := exitError.Sys().(syscall.WaitStatus)
+				if waitStatus.ExitStatus() == 1 {
+					return nil, errors.New("镜像包压缩失败")
+				}
+			}
+			fmt.Printf("执行命令时出现错误: %v, 输出: %s\n", err, output)
+		}
+		// 上传到minio TODO 增加兼容华为云OBS的上传功能
+		runTimeZip := fmt.Sprintf("/home/tmp/%s/%s", userId, modelName+"Runtime.zip")
+		var minio utils.MinIO
+		err = minio.StreamUpload("obs-isf", fmt.Sprintf("models/models/%s/%s/", modelName, modelName+"Runtime.zip"), runTimeZip)
+		if err != nil {
+			return nil, errors.New("镜像压缩包上传对象存储失败" + err.Error())
+		}
+		_, err = os.Stat(runTimeZip)
+		if os.IsExist(err) {
+			os.RemoveAll(runTimeZip)
+		}
+		global.CMBP_REDIS.Del(context.Background(), modelName+"Runtime.zip")
+		global.CMBP_REDIS.Del(context.Background(), params.UUID+"Runtime")
+
+	}
+	// 生成MD5
+	md5sum, err := utils.FileMD5(filepath.Join(modelDir, modelName+".zip"))
+	if err != nil {
+		return nil, err
+	}
+
+	// 删除剩余临时目录
+	err = os.RemoveAll(targetPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	err = os.RemoveAll(runTimePath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	// 保存图片和视频到对象存储
+	err = utils.SaveFile(imgFile, filepath.Join("/home/OBS/models/models_media/", modelName+".jpg"))
+	if err != nil {
+		return nil, err
+	}
+	err = utils.SaveFile(videoFile, filepath.Join("/home/OBS/models/models_media/", modelName+".mp4"))
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析业务模型参数
+
+	busList := ""
+	busDict := map[string]interface{}{}
+	busApi := map[string]interface{}{}
+	busType := map[string]interface{}{}
+
+	if busListDict != nil {
+		for _, bus := range busListDict {
+			busName := bus["business_name"]
+			if busName != "" {
+				busList = busList + busName.(string) + "|"
+			}
+			busParams := bus["business_params"]
+			apis := bus["business_apis"]
+			busType[busName.(string)] = bus["business_type"]
+			busDict[busName.(string)] = busParams
+			busApi[busName.(string)] = apis
+		}
+		busList = busList[:len(busList)-1]
+	}
+
+	var modelKind int
+	global.CMBP_DB.Model(&system.AlgorithmInfo{}).Where("algorithm_id = ?", params.AlgorithmID).Pluck("model_kind", &modelKind)
+
+	var modelFiled system.ModelField
+	err = global.CMBP_DB.Model(&system.ModelField{}).Joins("JOIN t_model_type ON t_model_type.model_field_id = t_model_field.id").First(&modelFiled).Error
+	if err != nil {
+		return nil, err
+	}
+	industryCode := modelFiled.IndustryCode
+	fieldCode := modelFiled.Code
+
+	t := time.Now().Format("20060102150405")
+	isDocker := false
+	if params.IsImage != nil && *params.IsImage == 1 {
+		isDocker = true
+	}
+	busParams, err := json.Marshal(busDict)
+	if err != nil {
+		return nil, err
+	}
+	busTypeStr, err := json.Marshal(busType)
+	if err != nil {
+		return nil, err
+	}
+	busApiStr, err := json.Marshal(busApi)
+	if err != nil {
+		return nil, err
+	}
+
+	needGpu := false
+	if params.NeedGPU != nil && *params.NeedGPU == 1 {
+		needGpu = true
+	}
+	onBoot := false
+	if params.OnBoot == 1 {
+		onBoot = true
+	}
+
+	modelAll := system.ModelAll{
+		ModelType:              params.ModelType,
+		FieldCode:              fieldCode,
+		ModelName:              params.ModelName,
+		ModelChineseName:       params.ModelChineseName + "-Mark-" + t,
+		ModelVersion:           params.ModelVersion,
+		ModelDescription:       params.ModelDescription,
+		TechnicalDescription:   params.TechnicalDescription,
+		PerformanceDescription: params.PerformanceDescription,
+		Advantage:              params.Advantage,
+		MD5:                    md5sum,
+		EncryptPassword:        encrypted,
+		HardwareType:           params.HardwareType,
+		IsImage:                isDocker,
+		CMD:                    params.Cmd,
+		JsonURL:                strings.TrimSpace(params.JsonUrl),
+		ImgURL:                 strings.TrimSpace(params.ImgUrl),
+		BusinessList:           busList,
+		BusinessParams:         string(busParams),
+		ModelPurpose:           params.ModelPurpose,
+		BusinessAPI:            string(busApiStr),
+		AiModelAPI:             params.AIModelAPI,
+		BusinessType:           string(busTypeStr),
+		NeedGPU:                needGpu,
+		OnBoot:                 onBoot,
+		TestDuration:           params.TestDuration,
+		Accuracy:               params.Accuracy,
+		IsRealChannel:          params.IsRealChannel,
+		AuditState:             1,
+		User:                   userId,
+		TestStatus:             0,
+		NewModelFlag:           true,
+		IndustryCode:           industryCode,
+		ModelKind:              modelKind,
+		AlgorithmID:            params.AlgorithmID,
+		UUID:                   params.UUID,
+		BuildWay:               1,
+		IsProcess:              1,
+	}
+
+	err = global.CMBP_DB.Save(&modelAll).Error
+	if err != nil {
+		return nil, err
+	}
+	// TODO 1、Redis 删除缓存 2、图片视频加水印
+	rspData := map[string]string{
+		"model_id": modelAll.ID,
+	}
+	return rspData, nil
 }
 
-func SaveSliceFile(params systemReq.UploadModelStoreReq, userId string) error {
-	destFilePath := "/home/models/fileSave/" + userId + "/" + params.ModelName + "V" + params.ModelVersion + ".zip"
-	zf, err := os.Create(destFilePath)
+func SaveSliceFile(taskId, userId, modelZipPath string) error {
+	zf, err := os.Create(modelZipPath)
 	if err != nil {
 		return err
 	}
@@ -889,7 +1212,7 @@ func SaveSliceFile(params systemReq.UploadModelStoreReq, userId string) error {
 
 	chunk := 0
 	for {
-		sourceFilePath := "/home/models/fileSave/" + userId + "/" + params.TaskID + strconv.Itoa(chunk)
+		sourceFilePath := "/home/models/fileSave/" + userId + "/" + taskId + strconv.Itoa(chunk)
 		if _, err := os.Stat(sourceFilePath); os.IsNotExist(err) {
 			if chunk == 0 {
 				return errors.New("分片文件不存在" + sourceFilePath)
@@ -1034,10 +1357,10 @@ func (modelService *ModelService) GetModelOpsUuid(userID string) (interface{}, e
 		return "", errors.New("生成UUID失败")
 	}
 	shortUUID := strings.ToUpper(strings.Join(strings.Split(uid.String(), "-"), ""))
-	global.CMBP_REDIS.Set(context.Background(), shortUUID, fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600)
-	global.CMBP_REDIS.Set(context.Background(), shortUUID+"AIModel", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600)
-	global.CMBP_REDIS.Set(context.Background(), shortUUID+"plugins", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600)
-	global.CMBP_REDIS.Set(context.Background(), shortUUID+"Runtime", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600)
+	global.CMBP_REDIS.Set(context.Background(), shortUUID, fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600*time.Second)
+	global.CMBP_REDIS.Set(context.Background(), shortUUID+"AIModel", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600*time.Second)
+	global.CMBP_REDIS.Set(context.Background(), shortUUID+"plugins", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600*time.Second)
+	global.CMBP_REDIS.Set(context.Background(), shortUUID+"Runtime", fmt.Sprintf("/home/tmp/%s/%s", userID, shortUUID), 3600*time.Second)
 	model_dir := fmt.Sprintf("/home/tmp/%s", userID)
 
 	if _, err := os.Stat(model_dir); os.IsNotExist(err) {
@@ -1252,4 +1575,85 @@ func (modelService *ModelService) GetTestFreeApplication(params systemReq.GetTes
 	//		"power_list": QueryPower(attribute='id'),
 	//	}
 	//}
+}
+
+func (modelService *ModelService) CheckName(params systemReq.CheckName, userId string) (interface{}, error) {
+	exists := false
+	obsPath := ""
+	var count int64
+	zipName := params.ModelName + "V" + params.ModelVersion
+
+	switch params.Flag {
+	case 1:
+		if params.ModelVersion != "" {
+			obsPath = fmt.Sprintf("/OBS/models/models/%s/%s.zip", zipName, zipName)
+		} else {
+			return nil, errors.New("model_version参数不正确")
+		}
+		global.CMBP_DB.Model(&system.ModelAll{}).Where("model_name = ?", params.ModelName).Where("model_version = ?", params.ModelVersion).Count(&count)
+		if count > 0 {
+			exists = true
+		}
+	case 2:
+		if params.UUID != "" {
+			obsPath = fmt.Sprintf("/OBS/BusinessModelLibray/%s.zip", params.UUID)
+		}
+		global.CMBP_DB.Model(&system.BusinessModelAll{}).Where("model_name = ?", params.ModelName).Where("model_version = ?", userId).Count(&count)
+		if count > 0 {
+			exists = true
+		}
+	case 3:
+		obsPath = fmt.Sprintf("/OBS/ModelLibrary/%s.zip", params.ModelName)
+		global.CMBP_DB.Model(&system.AIModelAll{}).Where("model_name = ?", params.ModelName).Count(&count)
+		if count > 0 {
+			exists = true
+		}
+	case 4:
+		obsPath = fmt.Sprintf("/OBS/DataAnalyzeModelLibrary/%s.zip", params.ModelName)
+		global.CMBP_DB.Model(&system.DataAnalyzeModelAll{}).Where("model_name = ?", params.ModelName).Count(&count)
+		if count > 0 {
+			exists = true
+		}
+	case 5:
+		if strings.ToLower(params.ModelName) != params.ModelName {
+			return nil, errors.New("镜像名称不能包含大写字母")
+		}
+		obsPath = fmt.Sprintf("/OBS/RuntimeLibrary/%s.zip", zipName)
+		global.CMBP_DB.Model(&system.RuntimeAll{}).Where("name = ?", params.ModelName).Where("tag = ?", params.ModelVersion).Count(&count)
+		if count > 0 {
+			exists = true
+		}
+		ctx := context.Background()
+
+		// 创建Docker客户端实例
+		cli, err := client.NewClientWithOpts(client.FromEnv)
+		if err != nil {
+			panic(err)
+		}
+		defer cli.Close()
+
+		// 设置您的镜像名称 todo 常量参数抽取
+		imageName := fmt.Sprintf("%s/%s:%s", "172.24.3.26:5000", params.ModelName, params.ModelVersion)
+
+		// 检查镜像是否存在
+		_, _, err = cli.ImageInspectWithRaw(ctx, imageName)
+		if err != nil {
+			fmt.Printf("镜像不存在: %v\n", err)
+		} else {
+			exists = true
+		}
+	default:
+		return nil, errors.New("flag参数不正确")
+	}
+	if obsPath != "" {
+		_, err := os.Stat(obsPath)
+		if os.IsExist(err) {
+			exists = true
+		}
+	}
+
+	resData := map[string]bool{
+		"exist": exists,
+	}
+	return resData, nil
 }

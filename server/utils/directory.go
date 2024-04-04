@@ -1,8 +1,12 @@
 package utils
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -89,6 +93,21 @@ Redirect:
 	return os.Rename(src, dst)
 }
 
+func FileCopy(src, dst string) error {
+	// 读取源文件内容
+	srcData, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	// 将文件内容写入目标文件
+	err = ioutil.WriteFile(dst, srcData, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func DeLFile(filePath string) error {
 	return os.RemoveAll(filePath)
 }
@@ -121,4 +140,226 @@ func FileExist(path string) bool {
 		return !fi.IsDir()
 	}
 	return !os.IsNotExist(err)
+}
+
+// CopyDir 拷贝A目录下的所有东西到B目录下
+func CopyDir(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		err = os.MkdirAll(dst, info.Mode())
+		if err != nil {
+			return err
+		}
+
+		files, err := ioutil.ReadDir(src)
+		if err != nil {
+			return err
+		}
+
+		for _, file := range files {
+			srcPath := filepath.Join(src, file.Name())
+			dstPath := filepath.Join(dst, file.Name())
+			err = CopyDir(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		srcFile, err := os.Open(src)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		dstFile, err := os.Create(dst)
+		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+
+		_, err = io.Copy(dstFile, srcFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CopyEnd(dest, zipPasswd, processor string) error {
+	filter := []string{"file_operation_86.so", "file_operation_arm.so"}
+	for _, f := range filter {
+		fObj := path.Join(dest, f)
+		_, err := os.Stat(fObj)
+		if os.IsExist(err) {
+			err = os.Remove(fObj)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	end := "/home/models/AIMonitorEnd"
+	err := CopyDir(end, dest)
+	if err != nil {
+		return err
+	}
+	if zipPasswd != "" {
+		_, err := AddEncryptFile(dest, zipPasswd, processor)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Plugins2So(dir, processor string) bool {
+	dirList, err := os.ReadDir(dir)
+	if err != nil {
+		global.CMBP_LOG.Fatal(err.Error())
+		return false
+	}
+	res := true
+	for _, fs := range dirList {
+		busPath := path.Join(dir, fs.Name())
+		filter := []string{".idea", "__pycache__", ".ipynb_checkpoints"}
+		found := false
+		for _, ft := range filter {
+			if fs.Name() == ft {
+				found = true
+				break
+			}
+		}
+		if !found {
+			res = ActionPlugins2So(busPath, processor, 0)
+		}
+	}
+	return res
+}
+
+func ActionPlugins2So(dir, processor string, level int) bool {
+	igNorFile := []string{"__init__.py"}
+	if level == 0 {
+		igNorFile = append(igNorFile, "config.py", "plugin_debug.py")
+	}
+	res := false
+	entryPoint := "BusinessModel"
+	fs, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return res
+	}
+	filter := []string{".idea", "__pycache__", ".ipynb_checkpoints"}
+	for index, f := range fs {
+		fObj := path.Join(dir, f.Name())
+
+		// 判断为业务模型文件夹
+		if f.IsDir() && !(f.Name()[:1] == ".") {
+			found := false
+			for _, ft := range filter {
+				if f.Name() == ft {
+					found = true
+					break
+				}
+			}
+			if !found {
+				res = ActionPlugins2So(fObj, processor, level+1)
+			}
+			// 判断为业务模型入口文件
+		} else if !(f.Name()[:1] == ".") && len(f.Name()) > 3 && f.Name()[len(f.Name())-3:] == ".py" {
+			found := false
+			for _, ft := range igNorFile {
+				if f.Name() == ft {
+					found = true
+					break
+				}
+			}
+			if !found {
+				existsEntryPoint := false
+				fContent, _ := os.ReadFile(fObj)
+				if strings.Contains(string(fContent), entryPoint) {
+					existsEntryPoint = true
+				}
+				if existsEntryPoint {
+					res = ActionPlugins2So(dir, processor, index)
+
+				}
+			}
+		}
+		if !res {
+			return res
+		}
+	}
+	return true
+}
+
+type TreeNode struct {
+	Label      string      `json:"label"`
+	ID         string      `json:"id"`
+	Children   []*TreeNode `json:"children,omitempty"`
+	RelPath    string      `json:"relpath"`
+	FirstMatch bool        `json:"first,omitempty"`
+	Name       string      `json:"__name__"`
+}
+
+var idCounter int
+
+func GetDirTree(path, start string, includePlugins int) []*TreeNode {
+	dirList, err := os.ReadDir(path)
+	if err != nil {
+		return nil
+	}
+
+	nodes := make([]*TreeNode, 0)
+	for _, entry := range dirList {
+		name := entry.Name()
+		entryPath := filepath.Join(path, name)
+		rel, err := filepath.Rel(start, entryPath)
+		if err != nil {
+			return nil
+		}
+		node := &TreeNode{
+			Label:   name,
+			ID:      entryPath,
+			RelPath: rel,
+			Name:    entryPath,
+		}
+
+		switch {
+		case entry.IsDir():
+			if includePlugins > 0 {
+				switch includePlugins {
+				case 1:
+					if !strings.Contains(entryPath, "AIModel") {
+						continue
+					}
+				case 2:
+					if !strings.Contains(entryPath, "plugins") {
+						continue
+					}
+				}
+				if (includePlugins == 1 && name == "AIModel" && !strings.Contains(path, "AIModel")) ||
+					(includePlugins == 2 && name == "plugins" && !strings.Contains(path, "plugins")) {
+					node.FirstMatch = true
+				}
+				node.Children = GetDirTree(entryPath, start, includePlugins)
+			} else {
+				node.Children = GetDirTree(entryPath, start, 0)
+				if name == "app" && !strings.Contains(path, "app") {
+					node.FirstMatch = true
+				}
+			}
+			nodes = append(nodes, node)
+		default:
+			idCounter++
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+}
+
+func TreeToJson(treeNodes []*TreeNode) ([]byte, error) {
+	return json.MarshalIndent(treeNodes, "", "  ")
 }

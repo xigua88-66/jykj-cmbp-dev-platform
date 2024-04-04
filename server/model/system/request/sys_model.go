@@ -55,17 +55,17 @@ type UploadModelStoreReq struct {
 	TechnicalDescription   string  `form:"technical_description"`
 	PerformanceDescription string  `form:"performance_description"`
 	ModelType              string  `form:"model_type" `
-	HardwareType           string  // 在Golang中硬件类型一般是枚举，但这里假设它是字符串
+	HardwareType           int     // 在Golang中硬件类型一般是枚举，但这里假设它是字符串
 	IsImage                *int    `form:"is_image" `
 	Cmd                    string  `form:"cmd" `
 	JsonUrl                string  `form:"json_url"`
 	ImgUrl                 string  `form:"img_url" `
 	BusinessDict           string  `form:"business_dict"`
-	OnBoot                 *int    `form:"on_boot"`
+	OnBoot                 int     `form:"on_boot"`
 	NeedGPU                *int    `form:"need_gpu" `
 	TestDuration           float64 `form:"test_duration"`
 	Accuracy               int     `form:"accuracy"`
-	IsRealChannel          int     `form:"is_real_channel"`
+	IsRealChannel          string  `form:"is_real_channel"`
 	TaskID                 string  `form:"task_id" `
 	AlgorithmID            int     `form:"algorithm_id" `
 	ModelPurpose           int     `form:"model_purpose;default=1"`
@@ -102,4 +102,25 @@ type GetTestFreeApply struct {
 	Page       *int   `form:"page"`
 	Limit      *int   `form:"limit"`
 	NameOrDesc string `form:"name_or_desc"`
+}
+
+type CheckName struct {
+	UUID         string `form:"uuid"`                          //  业务模型库新增该参数传uuid 其他情况为不需要传该参数
+	ModelName    string `form:"model_name" binding:"required"` // 模型名称
+	ModelVersion string `form:"model_version"`                 // 模型车间该参数传model_version 镜像管理该参数传tag  业务模型库该参数不传 算法库CV算法该参数不传 算法库数据算法该参数不传
+	Flag         int    `form:"flag" binding:"required"`       //  1-模型车间CV模型 2-业务模型库  3-算法库CV算法 4-算法库数据算法 5-镜像管理
+
+}
+
+type UploadFile struct {
+	TaskId string `form:"task_id"`
+	Chunk  string `form:"chunk"`
+}
+
+type GetModelDirTree struct {
+	UUID      string `form:"uuid"`
+	Path      string `form:"path"`
+	OBSPath   string `form:"obs_path"`
+	WeightsID string `form:"weights_id"`
+	Offline   int    `form:"offline"`
 }

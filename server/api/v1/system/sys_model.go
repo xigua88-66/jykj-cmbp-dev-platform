@@ -1,13 +1,19 @@
 package system
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	//"google.golang.org/genproto/googleapis/rpc/context"
 	"jykj-cmbp-dev-platform/server/global"
 	"jykj-cmbp-dev-platform/server/model/common/response"
 	"jykj-cmbp-dev-platform/server/model/system"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"jykj-cmbp-dev-platform/server/utils"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,12 +30,14 @@ func (m *ModelOptionApi) GetModelField(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	data, err := modelService.GetModelField(params)
+	rspData, err := modelService.GetModelField(params)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	} else {
-		response.OkWithData(data, c)
+		//rspData := []interface{}{}
+		//rspData = append(rspData, data)
+		response.OkWithData(rspData, c)
 		return
 	}
 }
@@ -134,7 +142,6 @@ func (m *ModelOptionApi) UploadModel(c *gin.Context) {
 		response.OkWithData(rspData, c)
 		return
 	}
-
 }
 
 func (m *ModelOptionApi) GetAutoUpdateEnd(c *gin.Context) {
@@ -231,4 +238,127 @@ func (m *ModelOptionApi) GetTestFreeApplication(c *gin.Context) {
 
 func (m *ModelOptionApi) PostTestFreeApplication(c *gin.Context) {
 
+}
+
+func (m *ModelOptionApi) UploadFile(c *gin.Context) {
+	var params systemReq.UploadFile
+	c.ShouldBind(&params)
+	userId := utils.GetUserID(c)
+	taskId := params.TaskId
+	chunk := params.Chunk
+	if chunk == "" {
+		chunk = "0"
+	}
+	filename := fmt.Sprintf("%s%s", taskId, chunk)
+	fileDir := fmt.Sprintf("/home/models/fileSave/%s", userId)
+	_, err := os.Stat(fileDir)
+	if os.IsNotExist(err) {
+		os.MkdirAll(fileDir, 0755)
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = utils.SaveFile(file, filepath.Join(fileDir, filename))
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.Ok(c)
+	return
+}
+
+func (m *ModelOptionApi) GetAIModelDirTree(c *gin.Context) {
+	var params systemReq.GetModelDirTree
+	c.ShouldBindQuery(&params)
+	userId := utils.GetUserID(c)
+
+	if params.Path != "" && params.Path != "[]" {
+		modelDir := fmt.Sprintf("/home/tmp/%s/%s", userId, params.UUID)
+		_, err := os.Stat(modelDir)
+		if os.IsExist(err) {
+			dirTree := utils.GetDirTree(modelDir, modelDir, 2)
+			response.OkWithData(dirTree, c)
+		} else {
+			response.FailWithMessage("该文件夹不存在，请传递正确的路径", c)
+		}
+	} else if params.OBSPath != "" {
+		modelDir := "/OBS/" + params.OBSPath
+		_, err := os.Stat(modelDir)
+		if os.IsExist(err) {
+			dirTree := utils.GetDirTree(modelDir, modelDir, 0)
+			response.OkWithData(dirTree, c)
+		} else {
+			response.FailWithMessage("该文件夹不存在，请传递正确的路径", c)
+		}
+
+	} else if params.WeightsID != "" {
+		var w system.WeightsManagement
+		global.CMBP_DB.Model(&system.WeightsManagement{}).Where("id = ?", params.WeightsID).First(&w)
+		fileDir := filepath.Join("/OBS/WeightsLibrary", w.ID, "data")
+		_, err := os.Stat(fileDir)
+		if os.IsExist(err) {
+			dirTree := utils.GetDirTree(fileDir, fileDir, 0)
+			// TODO add url
+			response.OkWithData(dirTree, c)
+		} else {
+			response.FailWithMessage("数据错误"+err.Error(), c)
+		}
+	} else if params.Offline != 0 {
+		key := params.UUID + "_AIModel_tmp_dirs"
+		data, _ := global.CMBP_REDIS.Get(context.Background(), key).Bytes()
+		var dirTree []*utils.TreeNode
+		json.Unmarshal(data, &dirTree)
+		response.OkWithData(dirTree, c)
+	} else {
+		modelDir := fmt.Sprintf("/home/tmp/%s/%s", userId, params.UUID)
+		_, err := os.Stat(modelDir)
+		var dirTree []*utils.TreeNode
+		if os.IsExist(err) {
+			dirTree = utils.GetDirTree(modelDir, modelDir, 0)
+		} else {
+			dirTree = utils.GetDirTree(modelDir, modelDir, 1)
+		}
+		response.OkWithData(dirTree, c)
+	}
+	return
+}
+
+func (m *ModelOptionApi) CheckName(c *gin.Context) {
+	var params systemReq.CheckName
+	c.ShouldBind(&params)
+	userId := utils.GetUserID(c)
+	rspData, err := modelService.CheckName(params, userId)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithData(rspData, c)
+	return
+}
+
+func (m *ModelOptionApi) GetModelBusiness(c *gin.Context) {
+	var modelId string
+	c.BindQuery(modelId)
+	if modelId == "" {
+		response.FailWithMessage("参数不能为空", c)
+	}
+	var model system.ModelAll
+	global.CMBP_DB.Model(&system.ModelAll{}).Where("audit_state = 1 AND id = ?", modelId).First(&model)
+	if model.ID == "" {
+		response.FailWithMessage("模型不存在", c)
+	}
+	zipName := model.ModelName + "V" + model.ModelVersion
+	zipPath := fmt.Sprintf("/home/OBS/models/models/%s/%s.zip", zipName, zipName)
+	_, err := os.Stat(zipPath)
+	if os.IsNotExist(err) {
+		response.FailWithMessage("OBS下业务模型包不存在", c)
+	}
+
+}
+
+func (m *ModelOptionApi) NothingToDo(c *gin.Context) {
+	response.Ok(c)
+	return
 }

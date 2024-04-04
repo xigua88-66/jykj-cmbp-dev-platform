@@ -14,7 +14,7 @@ type TicketService struct {
 }
 
 func (ticketService *TicketService) QueryTickets(userName string, roleName string, req systemReq.GetUserTickets) (resp []byte, err error) {
-	reqUrl := "http://172.24.1.134:8008/api/v1.0/tickets"
+	reqUrl := "http://172.24.1.134:8008/api/v1.0/tickets" // todo 将工作流系统访问地址抽取出来
 	header := ticketService.GetHeader()
 	header["username"] = userName
 	fmt.Println(userName)

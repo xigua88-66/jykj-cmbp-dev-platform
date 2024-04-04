@@ -108,3 +108,88 @@ func ZipFiles(filename string, files []string, oldForm, newForm string) error {
 	}
 	return nil
 }
+
+func CompressZip(sourcePath, targetPath, targetFile string, delSourcePath bool) error {
+	// 检查源目录是否存在
+	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+		return fmt.Errorf("源目录不存在")
+	}
+
+	// 创建目标目录（如果不存在的话）
+	if err := os.MkdirAll(targetPath, 0755); err != nil {
+		return err
+	}
+
+	target := filepath.Join(targetPath, targetFile+".zip")
+
+	// 创建ZIP文件
+	zf, err := os.Create(target)
+	if err != nil {
+		return fmt.Errorf("创建ZIP文件时出错: %v", err)
+	}
+	defer zf.Close()
+
+	zipWriter := zip.NewWriter(zf)
+	defer zipWriter.Close()
+
+	// 遍历源目录并添加到ZIP
+	err = filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(sourcePath, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// 创建ZIP中的目录条目
+			fh, err := zip.FileInfoHeader(info)
+			fh.Name = relPath + "/"
+			if err != nil {
+				return err
+			}
+			_, err = zipWriter.CreateHeader(fh)
+			if err != nil {
+				return err
+			}
+		} else {
+			// 添加文件到ZIP
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			fh, err := zip.FileInfoHeader(info)
+			fh.Name = relPath
+			if err != nil {
+				return err
+			}
+
+			w, err := zipWriter.CreateHeader(fh)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(w, file)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("文件压缩失败: %v", err)
+	}
+
+	// 如果需要，删除源文件目录
+	if delSourcePath {
+		if err := os.RemoveAll(sourcePath); err != nil {
+			fmt.Printf("删除源目录时出错: %v\n", err)
+		}
+	}
+	return nil
+}
