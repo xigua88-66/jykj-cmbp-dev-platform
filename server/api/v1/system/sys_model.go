@@ -144,6 +144,15 @@ func (m *ModelOptionApi) UploadModel(c *gin.Context) {
 	}
 }
 
+func (m *ModelOptionApi) DeleteModel(c *gin.Context) {
+	modelID := c.Param("model_id")
+	if modelID == "" {
+		response.FailWithMessage("路由中模型ID为必传项", c)
+		return
+	}
+	resData, err := modelService.DeleteModel(modelID)
+}
+
 func (m *ModelOptionApi) GetAutoUpdateEnd(c *gin.Context) {
 	userID := utils.GetUserID(c)
 	rspData, err := modelService.GetAutoUpdateTask(userID)
@@ -339,26 +348,118 @@ func (m *ModelOptionApi) CheckName(c *gin.Context) {
 }
 
 func (m *ModelOptionApi) GetModelBusiness(c *gin.Context) {
-	var modelId string
-	c.BindQuery(modelId)
+	modelId := c.Query("model_id")
 	if modelId == "" {
 		response.FailWithMessage("参数不能为空", c)
+		return
 	}
 	var model system.ModelAll
 	global.CMBP_DB.Model(&system.ModelAll{}).Where("audit_state = 1 AND id = ?", modelId).First(&model)
 	if model.ID == "" {
 		response.FailWithMessage("模型不存在", c)
+		return
 	}
 	zipName := model.ModelName + "V" + model.ModelVersion
 	zipPath := fmt.Sprintf("/home/OBS/models/models/%s/%s.zip", zipName, zipName)
 	_, err := os.Stat(zipPath)
 	if os.IsNotExist(err) {
 		response.FailWithMessage("OBS下业务模型包不存在", c)
+		return
 	}
+	businessList, err := utils.GetModelBusinessList(zipPath)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithData(businessList, c)
+	return
 
 }
 
+func (m *ModelOptionApi) ModelTrainRelate(c *gin.Context) { // TODO
+	f := map[string]interface{}{
+		"param_desc": "init.weights",
+		"param_name": "init.weights"}
+	files := []interface{}{}
+	files = append(files, f)
+	rspData := map[string]interface{}{
+		"is_need_relate": true,
+		"relation_files": files,
+		"replace_weights": map[string]interface{}{
+			"desc":        "需要升级的权重",
+			"target_file": "",
+			"type":        0,
+		},
+	}
+	response.OkWithData(rspData, c)
+}
+
+func (m *ModelOptionApi) PutModelBusiness(c *gin.Context) {
+	modelId := c.PostForm("model_id")
+	businessDict := c.PostForm("business_dict")
+	if modelId == "" {
+		response.FailWithMessage("modelId不能为空", c)
+		return
+	}
+	var modelAll system.ModelAll
+	global.CMBP_DB.Model(&system.ModelAll{}).Where("id = ?", modelId).First(&modelAll)
+	if modelAll.ID == "" {
+		response.FailWithMessage("该模型不存在", c)
+		return
+	}
+	var businessList []map[string]interface{}
+	if businessDict != "" {
+		err := json.Unmarshal([]byte(businessDict), &businessList)
+		if err != nil || len(businessList) == 0 {
+			response.FailWithMessage("business_dict不符合规则", c)
+			return
+		}
+		busStr := make([]string, 0)
+		busType := make(map[string]interface{})
+		busDict := make(map[string]interface{})
+		busApi := make(map[string]interface{})
+		for _, dict := range businessList {
+			busName := dict["business_name"].(string)
+			busParams := dict["business_params"]
+			busApis, ok := dict["business_apis"].([]interface{})
+			if !ok {
+				busApis = []interface{}{}
+			}
+			busType[busName] = dict["business_type"]
+			busDict[busName] = busParams
+			busApi[busName] = busApis
+			busStr = append(busStr, busName)
+		}
+
+		modelAll.BusinessList = strings.Join(busStr, "|")
+		params, _ := json.Marshal(busDict)
+		api, _ := json.Marshal(busApi)
+		bType, _ := json.Marshal(busType)
+		modelAll.BusinessParams = string(params)
+		modelAll.BusinessAPI = string(api)
+		modelAll.BusinessType = string(bType)
+
+		var modelInfo []system.Model
+		global.CMBP_DB.Model(&system.Model{}).Where("model_all_id = ?", modelAll.ID).Find(&modelInfo)
+
+		for _, m := range modelInfo {
+			m.BusinessList = modelAll.BusinessList
+			m.BusinessParams = modelAll.BusinessParams
+			m.BusinessType = modelAll.BusinessType
+			global.CMBP_DB.Save(&m)
+		}
+		global.CMBP_DB.Save(&modelAll)
+	}
+	response.Ok(c)
+}
+
 func (m *ModelOptionApi) NothingToDo(c *gin.Context) {
+	response.Ok(c)
+	return
+}
+
+func (m *ModelOptionApi) AddHotModule(c *gin.Context) {
+	// TODO
 	response.Ok(c)
 	return
 }

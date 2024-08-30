@@ -241,3 +241,15 @@ cors:
       allow-methods: GET, POST
       expose-headers: Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type
       allow-credentials: true # 布尔值
+
+# 模型工厂基础配置
+cmbp-base:
+  jupyter-lab-url: https://jupyter.coal-cloud.cn:%s/lab
+  cmbp-url: https://ai.coal-cloud.cn/
+  oss-path: https://ai.coal-cloud.cn/minio/
+  model-market-media: market/models
+  model-warehouse-media: models/models_media
+  # OBS模型存放目录,保留%号
+  oss-model-path: /home/OBS/models/models/%s/
+  # docker私有仓库，保留%号
+  docker-registry: 172.24.3.26:5000/%s:%s

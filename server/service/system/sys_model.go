@@ -15,6 +15,7 @@ import (
 	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
 	"jykj-cmbp-dev-platform/server/utils"
 	"mime/multipart"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -89,8 +90,7 @@ func (modelService *ModelService) GetModelField(params systemReq.ModelFiled) (da
 			var fieldRsp systemRsp.GetModelField
 			fieldRsp.FieldName = fieldObj.Name
 			fieldRsp.FieldNameEn = fieldObj.FieldNameEn
-			// todo url前缀从配置文件中获取
-			fieldRsp.FieldImgUrl = fieldObj.FieldImgPath
+			fieldRsp.FieldImgUrl = global.CMBP_CONFIG.CMBPBase.CmbpUrl + fieldObj.FieldImgPath
 			fieldRsp.FieldCode = fieldObj.Code
 			fieldRsp.IndustryName = industry.IndustryName
 			fieldRsp.IndustryCode = industry.IndustryCode
@@ -384,13 +384,17 @@ func FormatModelList(modelList []system.ModelMarketList, isCloud int, hadModel [
 
 	for _, m := range modelList {
 		modelZhName := m.ModelChineseName
+		baseUrl := global.CMBP_CONFIG.CMBPBase.OssPath
 		if isCloud != 0 {
 			nameSplit := strings.Split(modelZhName, "-")
 			if len(nameSplit) >= 2 {
 				modelZhName = "某企业" + strings.Join(nameSplit[1:], "-")
 			}
+			baseUrl, _ = url.JoinPath(baseUrl, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia)
 		}
-		// TODO 通过配置文件返回生成地址
+		baseUrl, _ = url.JoinPath(baseUrl, global.CMBP_CONFIG.CMBPBase.ModelMarketMedia)
+		modelFullName := m.ModelName + "V" + m.ModelVersion
+
 		var isHad int
 		if strings.Contains(m.ID, strings.Join(hadModel, "")) {
 			isHad = 1
@@ -424,7 +428,12 @@ func FormatModelList(modelList []system.ModelMarketList, isCloud int, hadModel [
 				Where("model_all_id = ?", m.ID).
 				Where("model_version = ?", fmt.Sprintf("%s.%d", m.ModelVersion, m.Edition)).
 				Where("user = ? OR user = ?", user, userID).First(&modelInfo)
+			if m.ModelKind == 1 {
+				modelFullName = m.ModelName + "." + string(rune(m.Edition))
+			}
 		}
+		imgPath, _ := url.JoinPath(baseUrl, modelFullName+".jpg")
+		videoPath, _ := url.JoinPath(baseUrl, modelFullName+".mp4")
 		if modelInfo.SyncFlag == nil || *modelInfo.SyncFlag == 1 {
 			isDownload = 1 // 已下载
 		} else if *modelInfo.SyncFlag == 0 || *modelInfo.SyncFlag == -1 {
@@ -440,8 +449,8 @@ func FormatModelList(modelList []system.ModelMarketList, isCloud int, hadModel [
 			"model_description":       fmt.Sprintf("功能描述：%s；\\n技术描述：%s；\\n性能描述：%s。", m.ModelDescription, m.TechnicalDescription, m.PerformanceDescription),
 			"technical_description":   m.TechnicalDescription,
 			"performance_description": m.PerformanceDescription,
-			"img_path":                "", // TODO
-			"video_path":              "", // TODO
+			"img_path":                imgPath,
+			"video_path":              videoPath,
 			"download_count":          m.DownloadCount,
 			"collection_count":        m.CollectionCount,
 			"view_count":              m.ViewCount,
@@ -684,6 +693,18 @@ func FormatStoreModel(modelAll []system.ModelAll, userID string) (rspList []inte
 			buildTask = buildTaskObj.ID
 		}
 
+		modelFullName := m.ModelName + "V" + m.ModelVersion
+		baseUrl := global.CMBP_CONFIG.CMBPBase.OssPath
+		baseUrl, _ = url.JoinPath(baseUrl, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia)
+
+		if m.ModelKind == 1 {
+			baseUrl, _ = url.JoinPath(baseUrl, global.CMBP_CONFIG.CMBPBase.ModelMarketMedia)
+			modelFullName = modelFullName + "." + string(rune(m.Edition))
+		}
+
+		imgPath, _ := url.JoinPath(baseUrl, modelFullName+".jpg")
+		videoPath, _ := url.JoinPath(baseUrl, modelFullName+".mp4")
+
 		rspData := map[string]interface{}{
 			"model_id":                m.ID,
 			"industry_code":           m.IndustryCode,
@@ -709,8 +730,8 @@ func FormatStoreModel(modelAll []system.ModelAll, userID string) (rspList []inte
 			"developer":               userName,
 			"upload_time":             m.UpdateTime,
 			"business_dict":           FormatBusParams(m),
-			"img_path":                "", // TODO
-			"video_path":              "", // TODO
+			"img_path":                imgPath,
+			"video_path":              videoPath,
 			"edit":                    m.User == userID,
 			"model2video_config_list": model2video,
 			"test_status":             GetTestStatus(m),
@@ -831,7 +852,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 
 	modelName := params.ModelName + "V" + params.ModelVersion
 	// OBS模型存放目录
-	modelDir := fmt.Sprintf("/home/OBS/models/models/%s/", modelName) // TODO
+	modelDir := fmt.Sprintf(global.CMBP_CONFIG.CMBPBase.OssModelPath, modelName)
 
 	_, err := os.Stat(modelDir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -1403,8 +1424,8 @@ func (modelService *ModelService) GetIndustry(params systemReq.GetIndustry) (rsp
 				"industry_desc":      industry.IndustryDesc,
 				"industry_name_en":   industry.IndustryNameEN,
 				"industry_abbr_name": industry.IndustryAbbrName,
-				"market_img_url":     "http://172.24.3.26/" + industry.MarketImgPath,  // TODO
-				"outside_img_url":    "http://172.24.3.26/" + industry.OutsideImgPath, // TODO
+				"market_img_url":     path.Join(global.CMBP_CONFIG.CMBPBase.CmbpUrl, industry.MarketImgPath),
+				"outside_img_url":    path.Join(global.CMBP_CONFIG.CMBPBase.CmbpUrl, industry.OutsideImgPath),
 				"create_time":        industry.CreateTime.Format("2006-01-01 02:03:05"),
 			}
 			rspDataList = append(rspDataList, d)
@@ -1427,8 +1448,8 @@ func (modelService *ModelService) GetIndustry(params systemReq.GetIndustry) (rsp
 			"industry_desc":      industry.IndustryDesc,
 			"industry_name_en":   industry.IndustryNameEN,
 			"industry_abbr_name": industry.IndustryAbbrName,
-			"market_img_url":     "http://172.24.3.26/" + industry.MarketImgPath,  // TODO
-			"outside_img_url":    "http://172.24.3.26/" + industry.OutsideImgPath, // TODO
+			"market_img_url":     path.Join(global.CMBP_CONFIG.CMBPBase.CmbpUrl, industry.MarketImgPath),
+			"outside_img_url":    path.Join(global.CMBP_CONFIG.CMBPBase.CmbpUrl, industry.OutsideImgPath),
 			"create_time":        industry.CreateTime.Format("2006-01-01 02:03:05"),
 		}
 		return d, nil
@@ -1464,7 +1485,8 @@ func (modelService *ModelService) CancelUpload(uuid, userID string) (err error) 
 	if err != nil {
 		return errors.New(fmt.Sprintf("文件删除失败， %s", err.Error()))
 	}
-	pid := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid)).String()
+	redis := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid))
+	pid := redis.Val()
 	if pid != "" {
 		err = utils.KillProcess(pid)
 		if err != nil {
@@ -1473,7 +1495,7 @@ func (modelService *ModelService) CancelUpload(uuid, userID string) (err error) 
 		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s", userID, uuid))
 		global.CMBP_REDIS.Del(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_port", userID, uuid))
 	}
-	aiPid := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_ai", userID, uuid)).String()
+	aiPid := global.CMBP_REDIS.Get(context.Background(), fmt.Sprintf("jupyter_lab_%s_%s_ai", userID, uuid)).Val()
 	if aiPid != "" {
 		err = utils.KillProcess(aiPid)
 		if err != nil {
@@ -1633,7 +1655,7 @@ func (modelService *ModelService) CheckName(params systemReq.CheckName, userId s
 		defer cli.Close()
 
 		// 设置您的镜像名称 todo 常量参数抽取
-		imageName := fmt.Sprintf("%s/%s:%s", "172.24.3.26:5000", params.ModelName, params.ModelVersion)
+		imageName := fmt.Sprintf(global.CMBP_CONFIG.CMBPBase.DockerRegistry, params.ModelName, params.ModelVersion)
 
 		// 检查镜像是否存在
 		_, _, err = cli.ImageInspectWithRaw(ctx, imageName)
@@ -1656,4 +1678,16 @@ func (modelService *ModelService) CheckName(params systemReq.CheckName, userId s
 		"exist": exists,
 	}
 	return resData, nil
+}
+
+func (ModelService *ModelService) DeleteModel(modelID string) (resData interface{}, err error) {
+	var model system.ModelAll
+	global.CMBP_DB.Model(system.ModelAll{}).Where("id = ?", modelID).First(&model)
+	if model.ID == "" {
+		return nil, errors.New("模型不存在或已删除")
+	}
+	if model.ModelKind == 1 {
+		// 删除已部署的大数据模型记录，删除model_info 下载信息
+		global.CMBP_DB.Model()
+	}
 }

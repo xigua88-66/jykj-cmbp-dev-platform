@@ -29,4 +29,7 @@ type Server struct {
 
 	// 跨域配置
 	Cors CORS `mapstructure:"cors" json:"cors" yaml:"cors"`
+
+	// 系统基础配置
+	CMBPBase CMBPBase `mapstructure:"cmbp-base" json:"cmbp-base" yaml:"cmbp-base"`
 }

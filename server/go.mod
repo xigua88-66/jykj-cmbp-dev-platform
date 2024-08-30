@@ -49,6 +49,7 @@ require (
 )
 
 require (
+	github.com/DataDog/go-python3 v0.0.0-20211102160307-40adc605f1fe // indirect
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
@@ -167,4 +168,7 @@ require (
 	modernc.org/sqlite v1.23.0 // indirect
 )
 
-require github.com/docker/docker v26.0.0+incompatible
+require (
+	github.com/docker/docker v26.0.0+incompatible
+	github.com/sbinet/go-python v0.1.0
+)

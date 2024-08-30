@@ -97,13 +97,13 @@ func (m *MinIO) ListObject(bucketName string) []string {
 	return objNames
 }
 
-func main() {
-	var m MinIO
-	//list := m.ListObject("obs-isf")
-	//fmt.Println(list)
-	u, err := m.DownloadUrl("obs-isf", "data/test/README.md")
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	fmt.Println(u)
-}
+//func main() {
+//	var m MinIO
+//	//list := m.ListObject("obs-isf")
+//	//fmt.Println(list)
+//	u, err := m.DownloadUrl("obs-isf", "data/test/README.md")
+//	if err != nil {
+//		fmt.Println(err.Error())
+//	}
+//	fmt.Println(u)
+//}

@@ -19,10 +19,13 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouter.GET("/v1.12/model_list", modelsApi.GetModelList)             // 模型市场
 		modelsRouter.GET("/v1.2/models", modelsApi.GetModelStore)                 // 模型仓库
 		modelsRouter.POST("/v1.2/model", modelsApi.UploadModel)                   // 线下构建上传模型
+		modelsRouter.DELETE("/v1.2/model/:model_id", modelsApi.DeleteModel)       // 仓库模型删除
 		modelsRouter.DELETE("/v1.6/cancel_upload", modelsApi.CancelUpload)        // 取消上传
 		modelsRouter.GET("/v1.7/model_check", modelsApi.CheckName)                // 模型名称重复性校验
-		modelsRouter.GET("/v1.7/model_business_parm", modelsApi.GetModelBusinese) // 线下模型新增-自动获取业务模型参数及类型
+		modelsRouter.GET("/v1.7/model_business_parm", modelsApi.GetModelBusiness) // 线下模型新增-自动获取业务模型参数及类型
 		modelsRouter.GET("/v1.0/upload_model", modelsApi.NothingToDo)             // 模型名称重复性校验
+		modelsRouter.GET("/v1.12/relate_model_train", modelsApi.ModelTrainRelate) // 模型名称重复性校验
+		modelsRouter.PUT("/v1.7/model", modelsApi.PutModelBusiness)               // 模型名称重复性校验
 
 		modelsRouterV15.GET("get_hardware_info", modelsApi.GetHardware)                  // 获取硬件分类
 		modelsRouterV15.GET("get_uuid", modelsApi.GetModelOpsUuid)                       // 获取模型操作的uuid
@@ -38,6 +41,7 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouterV19.GET("update_AIMoniterend", modelsApi.GetAutoUpdateEnd) // End自动更新任务
 		modelsRouterV19.GET("model_kind", modelsApi.GetModelKind)              // 获取模型大类
 		modelsRouterV19.GET("industry", modelsApi.GetIndustry)                 // 获取行业信息
+		modelsRouterV19.POST("hot_module", modelsApi.AddHotModule)             // 获取行业信息
 
 	}
 }

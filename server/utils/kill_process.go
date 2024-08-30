@@ -2,6 +2,8 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,17 +15,17 @@ import (
 
 func KillProcess(pid string) error {
 	// 获取子进程列表
-	pids, err := getChildPids(pid)
-	if err != nil {
-		return fmt.Errorf("获取子进程列表错误: %v", err)
-	}
-
-	// 递归杀死子进程
-	for _, childPid := range pids {
-		if err := KillProcess(childPid); err != nil {
-			fmt.Printf("杀死子进程 %d 错误: %v\n", childPid, err)
-		}
-	}
+	//pids, err := getChildPids(pid)
+	//if err != nil {
+	//	return fmt.Errorf("获取子进程列表错误: %v", err.Error())
+	//}
+	//
+	//// 递归杀死子进程
+	//for _, childPid := range pids {
+	//	if err := KillProcess(childPid); err != nil {
+	//		fmt.Printf("杀死子进程 %d 错误: %v\n", childPid, err)
+	//	}
+	//}
 
 	intPid, _ := strconv.Atoi(pid)
 
@@ -66,9 +68,11 @@ func KillProcess(pid string) error {
 
 func getChildPids(parentPid string) ([]string, error) {
 	cmd := exec.Command("pgrep", "-P", parentPid)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	outPut, err := cmd.Output()
-	if err != nil {
-		return nil, err
+	if err != nil && !strings.Contains(err.Error(), "exit status 1") {
+		return nil, errors.New(err.Error() + stderr.String())
 	}
 	scan := bufio.NewScanner(strings.NewReader(string(outPut)))
 	var subPid []string
