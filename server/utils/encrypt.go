@@ -158,13 +158,13 @@ func ReverseInt(a []int) []int {
 }
 
 func Py2So(dest, encryptFile, processor string) error {
-	py2Ccmd := fmt.Sprintf("/cmbp/Python370/bin/cython -3 %s", encryptFile)
+	py2Ccmd := fmt.Sprintf("%s -3 %s", global.CMBP_CONFIG.CMBPModelCfg.CythonPath, encryptFile)
 	if processor == "arm" {
-		py2Ccmd = fmt.Sprintf("cython -3 %s", encryptFile)
+		py2Ccmd = fmt.Sprintf("%s -3 %s", global.CMBP_CONFIG.CMBPModelCfg.CythonPath, encryptFile)
 	}
-	pythonDesc := "/cmbp/Python352/include/python3.5m"
+	pythonDesc := global.CMBP_CONFIG.CMBPModelCfg.CythonSrcLibInclude
 	if processor == "arm" {
-		pythonDesc = "/usr/local/include/python3.5m"
+		pythonDesc = global.CMBP_CONFIG.CMBPModelCfg.CythonSrcLibIncludeArm
 	}
 	c2soCmd := fmt.Sprintf("gcc -shared -pthread -fPIC  -I %s -o %s.so %s.c", pythonDesc, encryptFile[:len(encryptFile)-3], encryptFile[:len(encryptFile)-3])
 
@@ -180,7 +180,7 @@ func Py2So(dest, encryptFile, processor string) error {
 		cmd := exec.Command("/bin/bash", "-c", Cmd)
 		out, err := cmd.Output()
 		if err != nil {
-			global.CMBP_LOG.Fatal(err.Error())
+			global.CMBP_LOG.Error(fmt.Sprintf("执行转换错误，命令是：%s,错误详情是：%s", cmd, err.Error()))
 			return err
 		}
 		global.CMBP_LOG.Info("py转so成功" + string(out))
@@ -189,7 +189,7 @@ func Py2So(dest, encryptFile, processor string) error {
 		cmd := exec.Command("docker", "exec", "python-arrch64", "/bin/bash", "-c", Cmd)
 		_, err := cmd.CombinedOutput()
 		if err != nil {
-			global.CMBP_LOG.Fatal(err.Error())
+			global.CMBP_LOG.Error(fmt.Sprintf("执行转换错误，命令是：%s,错误详情是：%s", cmd, err.Error()))
 			return err
 		} else {
 			global.CMBP_LOG.Info("arm-py转so成功")

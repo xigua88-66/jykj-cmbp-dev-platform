@@ -3,6 +3,7 @@ package system
 import (
 	"jykj-cmbp-dev-platform/server/global"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -57,6 +58,29 @@ type ModelAll struct {
 
 func (ModelAll) TableName() string {
 	return "t_model_all"
+}
+
+// ModelNameAndVersion 模型的名称前缀
+func (m *ModelAll) ModelNameAndVersion() string {
+	if m.ModelKind != 1 {
+		return m.ModelName + "V" + m.ModelVersion
+	} else {
+		return m.ModelName + "V" + m.ModelVersion + "." + strconv.Itoa(m.Edition)
+	}
+}
+
+// ModelZipFile 模型的zip路径
+func (m *ModelAll) ModelZipFile() string {
+	return filepath.Join(global.CMBP_CONFIG.CMBPBase.ModelPath, m.ModelNameAndVersion(), ".zip")
+}
+
+// 模型的图片路径
+func (m *ModelAll) ModelImgFile() string {
+	return filepath.Join(global.CMBP_CONFIG.CMBPBase.OssModelMedia, m.ModelNameAndVersion(), ".jpg")
+}
+
+func (m *ModelAll) ModelVideoFile() string {
+	return filepath.Join(global.CMBP_CONFIG.CMBPBase.OssModelMedia, m.ModelNameAndVersion(), ".mp4")
 }
 
 type ModelDetails struct {
@@ -132,7 +156,7 @@ type ModelType struct {
 	ModelFieldID   string  `gorm:"ForeignKey:ModelFieldID;references:id on delete:CASCADE" json:"-"`
 
 	// 外键关联，定义模型领域与模型类型的关系
-	ModelField ModelField `gorm:"constraint:OnDelete:CASCADE;"`
+	ModelField ModelField `gorm:"foreignKey:ModelFieldID;references:ID" json:"model_field,omitempty"`
 }
 
 func (ModelType) TableName() string {
@@ -650,4 +674,122 @@ type TestFreeModelRes struct {
 	Reason               string                 `json:"reason"`
 	Phone                string                 `json:"phone"`
 	ApplicationTime      time.Time              `json:"application_time"`
+}
+
+// DataModelConfig 对应 t_data_model_config 表
+type DataModelConfig struct {
+	MineCode      *string `gorm:"column:mine_code;type:varchar(9);default:null" json:"mine_code,omitempty"`
+	ModelInfoID   *string `gorm:"column:model_info_id;type:varchar(32);default:null" json:"model_info_id,omitempty"`
+	ContainerName *string `gorm:"column:container_name;type:varchar(50);default:null" json:"container_name,omitempty"`
+	Desc          *string `gorm:"column:desc;type:varchar(32);default:null" json:"desc,omitempty"`        // 实例说明
+	Env           *string `gorm:"column:env;type:varchar(500);default:null" json:"env,omitempty"`         // 环境变量
+	Vol           *string `gorm:"column:vol;type:varchar(500);default:null" json:"vol,omitempty"`         // 挂载目录
+	Port          *string `gorm:"column:port;type:varchar(500);default:null" json:"port,omitempty"`       // 端口
+	Extra         *string `gorm:"column:extra;type:varchar(500);default:null" json:"extra,omitempty"`     // 其他
+	Cmd           string  `gorm:"column:cmd;type:varchar(500);not null" json:"cmd"`                       // 命令
+	Params        *string `gorm:"column:params;type:varchar(500);default:null" json:"params,omitempty"`   // 运行参数
+	DeployStatus  int     `gorm:"column:deploy_status;type:int" json:"deploy_status"`                     // 部署状态
+	ErrMsg        *string `gorm:"column:err_msg;type:varchar(500);default:null" json:"err_msg,omitempty"` // 错误信息
+	User          *string `gorm:"column:user;type:varchar(32);default:null" json:"user,omitempty"`        // 部署模型用户
+}
+
+// TableName 设置表名
+func (d *DataModelConfig) TableName() string {
+	return "t_data_model_config"
+}
+
+// ModelFeedback 对应 t_model_feedback 表
+type ModelFeedback struct {
+	global.CmbpModel
+	MineCode         *string    `gorm:"column:mine_code;type:varchar(9);default:null" json:"mine_code,omitempty"`
+	EventID          *string    `gorm:"column:event_id;type:varchar(32);default:null;index" json:"event_id,omitempty"` // 外键关联 t_event.id
+	ModelID          *string    `gorm:"column:model_id;type:varchar(32);default:null;index" json:"model_id,omitempty"` // 外键关联 t_model_all.id
+	OriginalVideoURL *string    `gorm:"column:original_video_url;type:text;default:null" json:"original_video_url,omitempty"`
+	ErrorVideoURL    *string    `gorm:"column:error_video_url;type:varchar(200);default:null" json:"error_video_url,omitempty"`
+	VideoDescribe    *string    `gorm:"column:video_describe;type:varchar(200);default:null" json:"video_describe,omitempty"`
+	Title            *string    `gorm:"column:title;type:varchar(200);default:null" json:"title,omitempty"`
+	Flag             int        `gorm:"column:flag;type:int" json:"flag"` // 上传状态,0代表开始上传，1代表上传成功，-1代表上传失败
+	StartTime        *time.Time `gorm:"column:start_time;type:datetime;default:null" json:"start_time,omitempty"`
+	EndTime          *time.Time `gorm:"column:end_time;type:datetime;default:null" json:"end_time,omitempty"`
+	Base64Image      *string    `gorm:"column:base64_image;type:text;default:null" json:"base64_image,omitempty"`
+	Advice           *string    `gorm:"column:advice;type:varchar(500);default:null" json:"advice,omitempty"`
+	Type             *int       `gorm:"column:type;type:int;default:null" json:"type,omitempty"`                   // 没有 代表1.3版本反馈，1代表探水系统，2代表客户端
+	ConfigID         *string    `gorm:"column:config_id;type:varchar(32);default:null" json:"config_id,omitempty"` // 实例id
+}
+
+// TableName 设置表名
+func (ModelFeedback) TableName() string {
+	return "t_model_feedback"
+}
+
+// ModelDeploy 对应 t_model_deploy 表
+type ModelDeploy struct {
+	global.CmbpModel
+	MineCode *string `gorm:"column:mine_code;type:varchar(9);default:null" json:"mine_code,omitempty"`
+	EventID  *string `gorm:"column:event_id;type:varchar(32);default:null;index" json:"event_id,omitempty"` // 外键关联 t_event.id
+	ModelID  *string `gorm:"column:model_id;type:varchar(32);default:null;index" json:"model_id,omitempty"` // 外键关联 t_model_all.id
+	Title    *string `gorm:"column:title;type:varchar(200);default:null" json:"title,omitempty"`
+	Type     int     `gorm:"column:type;type:int" json:"type"` // 类型 2:代表模型下发、3:代表模型更新
+}
+
+// TableName 设置表名
+func (ModelDeploy) TableName() string {
+	return "t_model_deploy"
+}
+
+// ModelEvaluation 对应 t_model_evaluation 表
+type ModelEvaluation struct {
+	global.CmbpModel
+	MineCode         *string `gorm:"column:mine_code;type:varchar(9);default:null" json:"mine_code,omitempty"`
+	EventID          *string `gorm:"column:event_id;type:varchar(32);default:null;index" json:"event_id,omitempty"` // 外键关联 t_event.id
+	ModelID          *string `gorm:"column:model_id;type:varchar(32);default:null;index" json:"model_id,omitempty"` // 外键关联 t_model_all.id
+	Title            string  `gorm:"column:title;type:varchar(200);default:'模型评价'" json:"title"`
+	Entirety         int     `gorm:"column:entirety;type:int;default:0" json:"entirety"`                                 // 整体, default 为 0
+	Accuracy         int     `gorm:"column:accuracy;type:int;default:0" json:"accuracy"`                                 // 准确性, default 为 0
+	Stability        int     `gorm:"column:stability;type:int;default:0" json:"stability"`                               // 稳定性, default 为 0
+	RecognitionModel *int    `gorm:"column:recognition_model;type:int;default:null" json:"recognition_model,omitempty"`  // 识别模型, 1 赞 -1 踩 0 不赞不踩
+	BusinessList     *string `gorm:"column:business_list;type:varchar(500);default:null" json:"business_list,omitempty"` // 业务模型, 1 赞 -1 踩 0 不赞不踩 {"空载":1,停机:-1}
+	Advice           *string `gorm:"column:advice;type:varchar(500);default:null" json:"advice,omitempty"`
+}
+
+// TableName 设置表名
+func (ModelEvaluation) TableName() string {
+	return "t_model_evaluation"
+}
+
+// Event 对应 t_event 表
+type Event struct {
+	global.CmbpModel
+	MineCode        *string            `gorm:"column:mine_code;type:varchar(9);default:null" json:"mine_code,omitempty"`
+	EventType       int                `gorm:"column:event_type;type:int" json:"event_type"`                              // 0:代表漏识别、1:代表误识别、2:代表模型下发、3:代表模型更新 4 模型评价 5 在线发布
+	EventStatus     int                `gorm:"column:event_status;type:int" json:"event_status"`                          // 0:代表事件未读|未响应、1:代表事件已读|已响应、2:代表事件正在处理、3:代表事件处理解决 99 已关闭 -1事件撤销
+	Creator         *string            `gorm:"column:creator;type:varchar(50);default:null" json:"creator,omitempty"`     // 代表由哪个用户创建该事件
+	Responder       *string            `gorm:"column:responder;type:varchar(50);default:null" json:"responder,omitempty"` // 代表由哪个用户响应该事件
+	Describe        *string            `gorm:"column:describe;type:varchar(500);default:null" json:"describe,omitempty"`  // 关于事件的一些描述
+	ModelFeedback   []ModelFeedback    `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	ModelEvaluation []ModelEvaluation  `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	ModelDeploy     []ModelDeploy      `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	OnlinePublish   []OnlinePublishing `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+}
+
+// TableName 设置表名
+func (Event) TableName() string {
+	return "t_event"
+}
+
+// OnlinePublishing 对应 t_online_publishing 表
+type OnlinePublishing struct {
+	EventID             *string `gorm:"column:event_id;type:varchar(32);default:null;index" json:"event_id,omitempty"` // 外键关联 t_event.id
+	TrainingName        *string `gorm:"column:training_name;type:varchar(100);default:null" json:"training_name,omitempty"`
+	TrainingDescription *string `gorm:"column:training_description;type:varchar(200);default:null" json:"training_description,omitempty"`
+	TrainingID          *string `gorm:"column:training_id;type:varchar(200);default:null" json:"training_id,omitempty"`
+	Path                *string `gorm:"column:path;type:varchar(200);default:null" json:"path,omitempty"`                    // 路径
+	TrainingStaff       *string `gorm:"column:training_staff;type:varchar(50);default:null" json:"training_staff,omitempty"` // 训练人员/共享人员
+	Developer           *string `gorm:"column:developer;type:varchar(50);default:null" json:"developer,omitempty"`
+	Title               *string `gorm:"column:title;type:varchar(200);default:null" json:"title,omitempty"`
+}
+
+// TableName 设置表名
+func (OnlinePublishing) TableName() string {
+	return "t_online_publishing"
 }

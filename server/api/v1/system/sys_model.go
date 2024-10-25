@@ -30,14 +30,12 @@ func (m *ModelOptionApi) GetModelField(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	rspData, err := modelService.GetModelField(params)
+	data, err := modelService.GetModelField(params)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	} else {
-		//rspData := []interface{}{}
-		//rspData = append(rspData, data)
-		response.OkWithData(rspData, c)
+		response.OkWithData(data, c)
 		return
 	}
 }
@@ -150,7 +148,12 @@ func (m *ModelOptionApi) DeleteModel(c *gin.Context) {
 		response.FailWithMessage("路由中模型ID为必传项", c)
 		return
 	}
-	resData, err := modelService.DeleteModel(modelID)
+	_, err := modelService.DeleteModel(modelID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.Ok(c)
 }
 
 func (m *ModelOptionApi) GetAutoUpdateEnd(c *gin.Context) {
@@ -259,18 +262,22 @@ func (m *ModelOptionApi) UploadFile(c *gin.Context) {
 		chunk = "0"
 	}
 	filename := fmt.Sprintf("%s%s", taskId, chunk)
+	global.CMBP_LOG.Info("报错的文件块是：" + filename)
 	fileDir := fmt.Sprintf("/home/models/fileSave/%s", userId)
+	global.CMBP_LOG.Info("文件保存的路径是：" + fileDir)
 	_, err := os.Stat(fileDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(fileDir, 0755)
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
+		global.CMBP_LOG.Error("获取请求参数中的上传文件报错：" + err.Error())
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 	err = utils.SaveFile(file, filepath.Join(fileDir, filename))
 	if err != nil {
+		global.CMBP_LOG.Error("保存文件报错了：" + err.Error())
 		response.FailWithMessage(err.Error(), c)
 		return
 	}

@@ -2,20 +2,15 @@ package global
 
 import (
 	"github.com/qiniu/qmgo"
-	"sync"
-
-	"github.com/songzhibin97/gkit/cache/local_cache"
-	"jykj-cmbp-dev-platform/server/utils/timer"
-
-	"golang.org/x/sync/singleflight"
-
-	"go.uber.org/zap"
-
-	"jykj-cmbp-dev-platform/server/config"
-
 	"github.com/redis/go-redis/v9"
+	"github.com/songzhibin97/gkit/cache/local_cache"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
+	"jykj-cmbp-dev-platform/server/config"
+	"jykj-cmbp-dev-platform/server/utils/timer"
+	"sync"
 )
 
 var (

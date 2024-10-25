@@ -8,4 +8,17 @@ type CMBPBase struct {
 	ModelWareHouseMedia string `mapstructure:"model-warehouse-media" json:"model-warehouse-media" yaml:"model-warehouse-media"`
 	OssModelPath        string `mapstructure:"oss-model-path" json:"oss-model-path" yaml:"oss-model-path"`
 	DockerRegistry      string `mapstructure:"docker-registry" json:"docker-registry" yaml:"docker-registry"`
+	ModelWareHouse      string `mapstructure:"model-warehouse" json:"model-warehouse" yaml:"model-warehouse"`
+	ModelPath           string `mapstructure:"model-path" json:"model-path" yaml:"model-path"`
+	OssModelMedia       string `mapstructure:"oss-model-media" json:"oss-model-media" yaml:"oss-model-media"`
+	OssMarketModelPath  string `mapstructure:"oss-market-model-path" json:"oss-market-model-path" yaml:"oss-market-model-path"`
+	WorkFlowUrl         string `mapstructure:"workflow-url" json:"workflow-url" yaml:"workflow-url"`
+	WorkFlowAppName     string `mapstructure:"workflow-app-name" json:"workflow-app-name" yaml:"workflow-app-name"`
+	WorkFlowAppSk       string `mapstructure:"workflow-app-sk" json:"workflow-app-sk" yaml:"workflow-app-sk"`
+}
+
+type CMBPModelCfg struct {
+	CythonPath             string `mapstructure:"cython-path" json:"cython-path" yaml:"cython-path"`
+	CythonSrcLibInclude    string `mapstructure:"cython-src-lib-include" json:"cython-src-lib-include" yaml:"cython-src-lib-include"`
+	CythonSrcLibIncludeArm string `mapstructure:"cython-src-lib-include-arm" json:"cython-src-lib-include-arm" yaml:"cython-src-lib-include-arm"`
 }

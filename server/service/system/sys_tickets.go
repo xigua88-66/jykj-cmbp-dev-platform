@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"jykj-cmbp-dev-platform/server/global"
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	"jykj-cmbp-dev-platform/server/utils"
 	"strconv"
@@ -14,7 +15,7 @@ type TicketService struct {
 }
 
 func (ticketService *TicketService) QueryTickets(userName string, roleName string, req systemReq.GetUserTickets) (resp []byte, err error) {
-	reqUrl := "http://172.24.1.134:8008/api/v1.0/tickets" // todo 将工作流系统访问地址抽取出来
+	reqUrl := global.CMBP_CONFIG.CMBPBase.WorkFlowUrl
 	header := ticketService.GetHeader()
 	header["username"] = userName
 	fmt.Println(userName)
@@ -39,12 +40,12 @@ func (ticketService *TicketService) QueryTickets(userName string, roleName strin
 
 func (ticketService *TicketService) GetHeader() map[string]string {
 	timeStamp := strconv.FormatInt(time.Now().Unix(), 10)
-	oriStr := timeStamp + "1491a364-2507-11ed-a8bd-0242ac120004"
+	oriStr := timeStamp + global.CMBP_CONFIG.CMBPBase.WorkFlowAppSk
 	singnture := fmt.Sprintf("%x", md5.Sum([]byte(oriStr)))
 	headers := map[string]string{
 		"signature": singnture,
 		"timestamp": timeStamp,
-		"appname":   "cmbp",
+		"appname":   global.CMBP_CONFIG.CMBPBase.WorkFlowAppName,
 	}
 	return headers
 }

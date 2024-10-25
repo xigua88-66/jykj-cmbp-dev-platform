@@ -23,15 +23,16 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouter.DELETE("/v1.6/cancel_upload", modelsApi.CancelUpload)        // 取消上传
 		modelsRouter.GET("/v1.7/model_check", modelsApi.CheckName)                // 模型名称重复性校验
 		modelsRouter.GET("/v1.7/model_business_parm", modelsApi.GetModelBusiness) // 线下模型新增-自动获取业务模型参数及类型
-		modelsRouter.GET("/v1.0/upload_model", modelsApi.NothingToDo)             // 模型名称重复性校验
-		modelsRouter.GET("/v1.12/relate_model_train", modelsApi.ModelTrainRelate) // 模型名称重复性校验
-		modelsRouter.PUT("/v1.7/model", modelsApi.PutModelBusiness)               // 模型名称重复性校验
+		modelsRouter.GET("/v1.0/upload_model", modelsApi.NothingToDo)             //前端无意义接口
+		modelsRouter.GET("/v1.12/relate_model_train", modelsApi.ModelTrainRelate) // 模型关联训练数据信息
+		modelsRouter.PUT("/v1.7/model", modelsApi.PutModelBusiness)               // 模型业务模型信息修改
+		//modelsRouter.GET("/v1.7/model_check", modelsApi.ModelCheck)
 
-		modelsRouterV15.GET("get_hardware_info", modelsApi.GetHardware)                  // 获取硬件分类
-		modelsRouterV15.GET("get_uuid", modelsApi.GetModelOpsUuid)                       // 获取模型操作的uuid
-		modelsRouterV15.DELETE("unpublish_model", modelsApi.UnPublishModel)              // 取消模型操作的uuid
-		modelsRouterV15.GET("test_free_application", modelsApi.GetTestFreeApplication)   // 取消模型操作的uuid
-		modelsRouterV15.POST("test_free_application", modelsApi.PostTestFreeApplication) // 取消模型操作的uuid
+		modelsRouterV15.GET("get_hardware_info", modelsApi.GetHardware)     // 获取硬件分类
+		modelsRouterV15.GET("get_uuid", modelsApi.GetModelOpsUuid)          // 获取模型操作的uuid
+		modelsRouterV15.DELETE("unpublish_model", modelsApi.UnPublishModel) // 取消模型操作的uuid
+		modelsRouterV15.GET("test_free_application", modelsApi.GetTestFreeApplication)
+		modelsRouterV15.POST("test_free_application", modelsApi.PostTestFreeApplication)
 		//modelsRouterV15.PUT("test_free_application", modelsApi.PutTestFreeApplication)       // 取消模型操作的uuid
 		//modelsRouterV15.DELETE("test_free_application", modelsApi.DeleteTestFreeApplication) // 取消模型操作的uuid
 		modelsRouterV15.POST("upload_file", modelsApi.UploadFile)

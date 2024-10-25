@@ -249,7 +249,22 @@ cmbp-base:
   oss-path: https://ai.coal-cloud.cn/minio/
   model-market-media: market/models
   model-warehouse-media: models/models_media
+  model-warehouse: /home/model_warehouse
+  model-path: /home/models/models
   # OBS模型存放目录,保留%号
   oss-model-path: /home/OBS/models/models/%s/
+  oss-model-media: /home/OBS/models/models_media
+  oss-market-model-path: /home/OBS/market/models
   # docker私有仓库，保留%号
   docker-registry: 172.24.3.26:5000/%s:%s
+  workflow-url: http://172.24.1.134:8008/api/v1.0/tickets
+  workflow-app-name: cmbp
+  workflow-app-sk: 1491a364-2507-11ed-a8bd-0242ac120004
+
+# 模型编译相关
+cmbp-model-cfg:
+  # 绝对路径或环境变量中存在的部分
+  cython-path: cython
+  # py2so中python的C文件,X86
+  cython-src-lib-include: /usr/include/python3.6m
+  cython-src-lib-include-arm:

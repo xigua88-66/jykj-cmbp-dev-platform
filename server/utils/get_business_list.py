@@ -28,7 +28,7 @@ def exec_script(code, filename='<script>', optimize=-1, global_vars=None):
 
 
 # 从python代码中获取特定的key-value
-def obtain_parm(code, keys: list = None):
+def obtain_parm(code, keys=None):
     """
     :param code: python代码字符串，字节字符串或AST模块对象
     :param keys: 需要提取的key列表
@@ -180,7 +180,7 @@ def obtain_parm_by_path(file_path, keys: list = None):
 
 
 # 从zip文件中获取业务config的key-value
-def obtain_parm_in_zip(zip_file_path, keys: list = None, ignore_dir_name: list=None):
+def obtain_parm_in_zip(zip_file_path, keys=None, ignore_dir_name=None):
     """
     :param ignore_dir_name: list plugins下要忽略的文件夹 default为[".idea", "__pycache__"]
     :param zip_file_path: 要读取的zip文件路径

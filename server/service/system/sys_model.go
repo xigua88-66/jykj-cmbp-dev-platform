@@ -649,7 +649,7 @@ func FormatStoreModel(modelAll []system.ModelAll, userID string) (rspList []inte
 		var industryName string
 		global.CMBP_DB.Model(&system.Industry{}).Where("industry_code = ?", m.IndustryCode).Pluck("industry_name", &industryName)
 		var dCount int64
-		global.CMBP_DB.Model(&system.Model{}).Joins("JOIN t_model_info ON t_model_all.model_name = t_model_all.model_name AND t_model_info.model_version = t_model_all.model_version").
+		global.CMBP_DB.Model(&system.Model{}).Joins("JOIN t_model_all ON t_model_all.model_name = t_model_all.model_name AND t_model_info.model_version = t_model_all.model_version").
 			Where("t_model_all.id = ?", m.ID).Count(&dCount)
 		var runtime system.RuntimeModels
 		runtimeId := ""
@@ -863,7 +863,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 	}
 
 	// 图片和视频保存目录 #/home/models/models
-	mediaDir := "/home/OBS/models/models_media"
+	mediaDir := global.CMBP_CONFIG.CMBPBase.OssModelMedia
 	_, err = os.Stat(mediaDir)
 	if errors.Is(err, os.ErrNotExist) {
 		err = os.MkdirAll(mediaDir, 0755)
@@ -968,9 +968,9 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 	if err != nil {
 		return nil, err
 	}
-	py2so := utils.Plugins2So(targetPath, processor)
-
-	if !py2so {
+	py2so, err := utils.Plugins2So(targetPath, processor)
+	if !py2so && err != nil {
+		global.CMBP_LOG.Error(fmt.Sprintf("业务模型转换so失败: %s", err.Error()))
 		return nil, errors.New("业务模型转换so失败")
 	}
 	exists, _ := utils.PathExists(targetPath + "plugins/plugins")
@@ -994,6 +994,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 
 	// 上传AIModel到OBS
 	AiModelPath := fmt.Sprintf("/home/tmp/%s/%s/", userId, params.UUID+"AIModel")
+	global.CMBP_LOG.Info(fmt.Sprintf("识别模型临时目录：%s", AiModelPath))
 	os.Mkdir(AiModelPath, 0755)
 	global.CMBP_REDIS.Set(context.Background(), params.UUID+"AIModel", 1, 3600*time.Second)
 	err = utils.CopyEnd(AiModelPath, randStr, processor)
@@ -1005,7 +1006,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 
 	// 创建命令
 	command := exec.Command("/bin/bash", "-c", zipCmd)
-
+	global.CMBP_LOG.Info(fmt.Sprintf("识别模型压缩命令: %s", command.String()))
 	// 执行命令
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -1016,10 +1017,10 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 				return nil, errors.New("识别模型包压缩失败：" + err.Error() + string(output))
 			}
 		}
-		fmt.Printf("执行命令时出现错误: %v, 输出: %s\n", err, output)
+		global.CMBP_LOG.Error(fmt.Sprintf("执行命令时出现错误: %v, 输出: %s\n", err, output))
 	}
 	// 如果命令执行成功，这里可以继续处理其他逻辑
-	fmt.Println("识别模型包压缩成功")
+	global.CMBP_LOG.Info("识别模型包压缩成功")
 
 	err = utils.FileCopy(fmt.Sprintf("/home/tmp/%s/%s/AIModel.zip", userId, params.UUID), fmt.Sprintf("/home/tmp/%s/%sAIModel/AIModel.zip", userId, params.UUID))
 	if err != nil {
@@ -1686,8 +1687,91 @@ func (ModelService *ModelService) DeleteModel(modelID string) (resData interface
 	if model.ID == "" {
 		return nil, errors.New("模型不存在或已删除")
 	}
+	global.CMBP_LOG.Info(fmt.Sprintf("待删除的模型是：%s", model.ModelChineseName))
 	if model.ModelKind == 1 {
 		// 删除已部署的大数据模型记录，删除model_info 下载信息
-		global.CMBP_DB.Model()
+		var modelInfo []system.Model
+		global.CMBP_DB.Model(&system.Model{}).Where("model_all_id = ?", model.ID).Find(&modelInfo)
+		for _, v := range modelInfo {
+			err = global.CMBP_DB.Delete(&system.DataModelConfig{}, "model_info_id = ?", v.ID).Error
+			if err != nil {
+				global.CMBP_LOG.Error("数据模型信息删除异常" + err.Error())
+				return nil, err
+			}
+		}
+		// 删除服务器上镜像
+		_, err = utils.DeleteImages(fmt.Sprintf("%s/%s:%s", global.CMBP_CONFIG.CMBPBase.OssPath, model.ModelName, fmt.Sprintf("%s.%d", model.ModelVersion, model.Edition)))
+		if err != nil {
+			return nil, errors.New("镜像删除失败" + err.Error())
+		}
 	}
+
+	// 删除服务器上模型文件和模型图片
+	global.CMBP_LOG.Info("删除models模型目录")
+
+	if model.NewModelFlag {
+		modelFile := fmt.Sprintf(global.CMBP_CONFIG.CMBPBase.OssModelPath, model.ModelNameAndVersion())
+		exists, _ := utils.PathExists(modelFile)
+		if exists {
+			utils.DeLFile(modelFile)
+		}
+		modelWareHouse := filepath.Join(global.CMBP_CONFIG.CMBPBase.ModelWareHouse, model.ModelNameAndVersion())
+		existsWareHouse, _ := utils.PathExists(modelWareHouse)
+		if existsWareHouse {
+			utils.DeLFile(modelWareHouse)
+		}
+	} else {
+		modelZipFile := model.ModelZipFile()
+		zipExists, _ := utils.PathExists(modelZipFile)
+		if zipExists {
+			utils.DeLFile(modelZipFile)
+		}
+	}
+	// 模型仓库媒体
+	imgFile := model.ModelImgFile()
+	videoFile := model.ModelVideoFile()
+	// 模型市场媒体
+	maskModelImg := filepath.Join(global.CMBP_CONFIG.CMBPBase.OssMarketModelPath, model.ModelNameAndVersion(), ".jpg")
+	maskModelVideo := filepath.Join(global.CMBP_CONFIG.CMBPBase.OssMarketModelPath, model.ModelNameAndVersion(), ".mp4")
+
+	err = utils.DeLFile(imgFile)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_LOG.Info("删除模型图片：" + imgFile)
+
+	err = utils.DeLFile(videoFile)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_LOG.Info("删除模型视频: " + videoFile)
+
+	err = utils.DeLFile(maskModelImg)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_LOG.Info("删除模型市场图片: " + maskModelImg)
+	err = utils.DeLFile(maskModelVideo)
+	if err != nil {
+		return nil, err
+	}
+	global.CMBP_LOG.Info("删除模型市场视频: " + maskModelVideo)
+
+	var modelFeedback []string
+	var modelDeploy []string
+	var modelEvaluation []string
+	global.CMBP_DB.Model(&system.ModelFeedback{}).Where("model_id = ?", model.ID).Pluck("model_id", &modelFeedback)
+	global.CMBP_DB.Model(&system.ModelDeploy{}).Where("model_id = ?", model.ID).Pluck("model_id", &modelDeploy)
+	global.CMBP_DB.Model(&system.ModelEvaluation{}).Where("model_id = ?", model.ID).Pluck("model_id", &modelEvaluation)
+
+	allModelID := append(modelFeedback, modelDeploy...)
+	allModelID = append(allModelID, modelEvaluation...)
+	for _, v := range allModelID {
+		err = global.CMBP_DB.Delete(&system.Event{}, "id = ?", v).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	global.CMBP_DB.Delete(&model)
+	return allModelID, nil
 }

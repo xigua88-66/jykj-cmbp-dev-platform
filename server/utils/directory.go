@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -22,17 +23,13 @@ import (
 //@return: bool, error
 
 func PathExists(path string) (bool, error) {
-	fi, err := os.Stat(path)
-	if err == nil {
-		if fi.IsDir() {
-			return true, nil
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
 		}
-		return false, errors.New("存在同名文件")
 	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
+	return true, err
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -216,11 +213,11 @@ func CopyEnd(dest, zipPasswd, processor string) error {
 	return nil
 }
 
-func Plugins2So(dir, processor string) bool {
+func Plugins2So(dir, processor string) (bool, error) {
 	dirList, err := os.ReadDir(dir)
 	if err != nil {
-		global.CMBP_LOG.Fatal(err.Error())
-		return false
+		global.CMBP_LOG.Error(err.Error())
+		return false, err
 	}
 	res := true
 	for _, fs := range dirList {
@@ -234,13 +231,13 @@ func Plugins2So(dir, processor string) bool {
 			}
 		}
 		if !found {
-			res = ActionPlugins2So(busPath, processor, 0)
+			res, err = ActionPlugins2So(busPath, processor, 0)
 		}
 	}
-	return res
+	return res, err
 }
 
-func ActionPlugins2So(dir, processor string, level int) bool {
+func ActionPlugins2So(dir, processor string, level int) (bool, error) {
 	igNorFile := []string{"__init__.py"}
 	if level == 0 {
 		igNorFile = append(igNorFile, "config.py", "plugin_debug.py")
@@ -249,7 +246,7 @@ func ActionPlugins2So(dir, processor string, level int) bool {
 	entryPoint := "BusinessModel"
 	fs, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
-		return res
+		return res, errors.New(fmt.Sprintf("业务模型文件夹不存在：%s, 详情：%s", dir, err.Error()))
 	}
 	filter := []string{".idea", "__pycache__", ".ipynb_checkpoints"}
 	for index, f := range fs {
@@ -265,7 +262,7 @@ func ActionPlugins2So(dir, processor string, level int) bool {
 				}
 			}
 			if !found {
-				res = ActionPlugins2So(fObj, processor, level+1)
+				res, err = ActionPlugins2So(fObj, processor, level+1)
 			}
 			// 判断为业务模型入口文件
 		} else if !(f.Name()[:1] == ".") && len(f.Name()) > 3 && f.Name()[len(f.Name())-3:] == ".py" {
@@ -283,16 +280,16 @@ func ActionPlugins2So(dir, processor string, level int) bool {
 					existsEntryPoint = true
 				}
 				if existsEntryPoint {
-					res = ActionPlugins2So(dir, processor, index)
+					res, err = ActionPlugins2So(dir, processor, index)
 
 				}
 			}
 		}
 		if !res {
-			return res
+			return res, err
 		}
 	}
-	return true
+	return true, nil
 }
 
 type TreeNode struct {
@@ -363,3 +360,67 @@ func GetDirTree(path, start string, includePlugins int) []*TreeNode {
 func TreeToJson(treeNodes []*TreeNode) ([]byte, error) {
 	return json.MarshalIndent(treeNodes, "", "  ")
 }
+
+// CopyFile 复制单个文件
+func CopyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	// 确保目标目录存在
+	dstDir := filepath.Dir(dst)
+	if _, err := os.Stat(dstDir); os.IsNotExist(err) {
+		err = os.MkdirAll(dstDir, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	destinationFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+
+	_, err = io.Copy(destinationFile, sourceFile)
+	return err
+}
+
+// copyDir 递归复制目录
+//func CopyDir(srcDir, dstDir string) error {
+//	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+//		if err != nil {
+//			return err
+//		}
+//
+//		// 构建目标路径
+//		relPath, err := filepath.Rel(filepath.Dir(srcDir), path)
+//		if err != nil {
+//			return err
+//		}
+//		dstPath := filepath.Join(dstDir, relPath)
+//
+//		if info.IsDir() {
+//			// 创建目标目录
+//			err = os.MkdirAll(dstPath, 0755)
+//			if err != nil {
+//				return err
+//			}
+//		} else {
+//			// 复制文件
+//			err = CopyFile(path, dstPath)
+//			if err != nil {
+//				return err
+//			}
+//		}
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}

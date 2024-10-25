@@ -12,7 +12,7 @@ import (
 
 func GetModelBusinessList(zipObj string) (resData interface{}, err error) {
 	dir, err := os.Getwd()
-	cmd := exec.Command("python", filepath.Join(dir, "utils", "get_business_list.py"), zipObj)
+	cmd := exec.Command("python3", filepath.Join(dir, "utils", "get_business_list.py"), zipObj)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
