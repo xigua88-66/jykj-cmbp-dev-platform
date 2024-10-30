@@ -133,3 +133,13 @@ type GetModelDirTree struct {
 	WeightsID string `form:"weights_id"`
 	Offline   int    `form:"offline"`
 }
+
+type RunTime struct {
+	Page       int    `form:"page"`
+	Limit      int    `form:"limit"`
+	RuntimeID  string `form:"runtime_id"`
+	NameOrDesc string `form:"name_or_desc"`
+	Type       string `form:"type"`
+	IsUsable   int    `form:"is_usable"`
+	ModelID    string `form:"model_id"`
+}

@@ -24,3 +24,19 @@ func SaveFile(f *multipart.FileHeader, dest string) error {
 	}
 	return nil
 }
+
+func GetFileSize(name string) int64 {
+	if _, err := os.Stat(name); os.IsNotExist(err) {
+		return 0
+	}
+	file, err := os.Open(name)
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
+	fi, err := file.Stat()
+	if err != nil {
+		return 0
+	}
+	return fi.Size()
+}

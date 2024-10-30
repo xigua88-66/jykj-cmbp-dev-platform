@@ -15,6 +15,10 @@ type CMBPBase struct {
 	WorkFlowUrl         string `mapstructure:"workflow-url" json:"workflow-url" yaml:"workflow-url"`
 	WorkFlowAppName     string `mapstructure:"workflow-app-name" json:"workflow-app-name" yaml:"workflow-app-name"`
 	WorkFlowAppSk       string `mapstructure:"workflow-app-sk" json:"workflow-app-sk" yaml:"workflow-app-sk"`
+	OssRuntimeLibrary   string `mapstructure:"oss-runtime-library" json:"oss-runtime-library" yaml:"oss-runtime-library"`
+	RuntimeDownRole     string `mapstructure:"runtime-down-role" json:"runtime-down-role" yaml:"runtime-down-role"`
+	OssMode             string `mapstructure:"oss-mode" json:"oss-mode" yaml:"oss-mode"`
+	OssExpireSeconds    int    `mapstructure:"oss-expire-seconds" json:"oss-expire-seconds" yaml:"oss-expire-seconds"`
 }
 
 type CMBPModelCfg struct {

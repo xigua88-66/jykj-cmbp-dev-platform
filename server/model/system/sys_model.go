@@ -478,7 +478,7 @@ func (r *RuntimeAll) TableName() string {
 }
 
 func (r *RuntimeAll) ModelZipFilePath() string {
-	return "/OBS/RuntimeLibrary/" + r.Name + r.Tag + ".zip"
+	return filepath.Join(global.CMBP_CONFIG.CMBPBase.OssRuntimeLibrary, r.Name+r.Tag+".zip")
 }
 
 type AutoBuildTask struct {

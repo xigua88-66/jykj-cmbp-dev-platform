@@ -14,6 +14,7 @@ import (
 	systemReq "jykj-cmbp-dev-platform/server/model/system/request"
 	systemRsp "jykj-cmbp-dev-platform/server/model/system/response"
 	"jykj-cmbp-dev-platform/server/utils"
+	"jykj-cmbp-dev-platform/server/utils/upload"
 	"mime/multipart"
 	"net/url"
 	"os"
@@ -1774,4 +1775,221 @@ func (ModelService *ModelService) DeleteModel(modelID string) (resData interface
 	}
 	global.CMBP_DB.Delete(&model)
 	return allModelID, nil
+}
+
+func (m *ModelService) JupyterNoteBook(userID string) (respData interface{}, err error) {
+	var noteBook []system.Notebook
+	global.CMBP_DB.Model(&system.Notebook{}).Where("user_id = ? AND status = 1", userID).Order("status DESC").Order("create_time DESC").Find(&noteBook)
+	expireTime := 0
+	jupyterList := []interface{}{}
+	for _, v := range noteBook {
+		expireDateTime := v.CreateTime.Add(time.Duration(*v.ExpirationTime) * time.Minute)
+		now := time.Now()
+		// 检查是否过期
+		if !(expireDateTime.Before(now) || expireDateTime.Equal(now)) {
+			expireTime = int(expireDateTime.Sub(now).Minutes())
+		}
+		jupyterList = append(jupyterList, map[string]interface{}{
+			"notebook_name":   v.Name,
+			"notebook_desc":   v.Desc,
+			"create_time":     v.CreateTime.Format("2006-01-02 15:04:05"),
+			"expire_time":     expireTime,
+			"url":             v.URL,
+			"notebook_status": v.Status,
+			"uuid":            v.UUID,
+			"notebook_id":     v.ID,
+		})
+	}
+	respData = map[string]interface{}{
+		"count":        len(noteBook),
+		"jupyter_list": jupyterList,
+	}
+	return respData, nil
+}
+
+func (m *ModelService) Runtime(params systemReq.RunTime, role, userName string) (res interface{}, err error) {
+	if params.RuntimeID != "" {
+		var runTime system.RuntimeAll
+		global.CMBP_DB.Model(&system.RuntimeAll{}).Where("id = ?", params.RuntimeID).First(&runTime)
+		if runTime.ID == "" {
+			return nil, errors.New("运行镜像不存在")
+		}
+		exists, err := utils.PathExists(filepath.Join(global.CMBP_CONFIG.CMBPBase.OssRuntimeLibrary, fmt.Sprintf("%s/%s.zip", runTime.Name, runTime.Tag)))
+		if err != nil {
+			return nil, errors.New("校验镜像OBS文件失败" + err.Error())
+		}
+		if !exists {
+			return nil, errors.New("运行镜像丢失")
+		}
+		roleList := strings.Split(global.CMBP_CONFIG.CMBPBase.RuntimeDownRole, ",")
+		hasPermission := false
+		for _, v := range roleList {
+			if v == role {
+				hasPermission = true
+				break
+			}
+		}
+		downUrl := "No Permission"
+
+		if hasPermission {
+			runTimeLib := strings.Split(global.CMBP_CONFIG.CMBPBase.OssRuntimeLibrary, "/")[len(strings.Split(global.CMBP_CONFIG.CMBPBase.OssRuntimeLibrary, "/"))-1]
+			if strings.ToLower(global.CMBP_CONFIG.CMBPBase.OssMode) == "minio" {
+				downUrl, err = url.JoinPath(global.CMBP_CONFIG.CMBPBase.OssPath, fmt.Sprintf("/%s/%s/%s.zip", runTimeLib, runTime.Name, runTime.Tag))
+				if err != nil {
+					return nil, errors.New("生成镜像下载链接失败：" + err.Error())
+				}
+			} else if strings.ToLower(global.CMBP_CONFIG.CMBPBase.OssMode) == "obs" {
+				downUrl, err = upload.HuaWeiObs.SignDownUrl(fmt.Sprintf("%s/%s/%s", runTimeLib, runTime.Name, runTime.Tag), 1800)
+			}
+		}
+
+		tp := 0
+		if &runTime.Type != nil {
+			tp = runTime.Type
+		}
+
+		res = map[string]interface{}{
+			"id":           runTime.ID,
+			"name":         runTime.Name,
+			"chinese_name": runTime.ChineseName,
+			"description":  runTime.Description,
+			"tag":          runTime.Tag,
+			"file_size":    fmt.Sprintf("%0.3f", float64(utils.GetFileSize(runTime.ModelZipFilePath())/1024.0/1024.0)),
+			"status":       runTime.Status,
+			"upload_time":  runTime.UpdateTime,
+			"down_url":     downUrl,
+			"build_way":    runTime.BuildWay,
+			"type":         tp,
+		}
+		return res, nil
+	}
+	relationRuntimeId := ""
+	var bindRuntime []interface{}
+	if params.ModelID != "" {
+		var modelRuntime system.RuntimeModels
+		global.CMBP_DB.Where("model_all_id = ?", params.ModelID).First(&modelRuntime)
+		if modelRuntime.ID != "" {
+			relationRuntimeId = modelRuntime.ID
+			var relationRuntime system.RuntimeAll
+			global.CMBP_DB.Where("id = ?", relationRuntimeId).First(&relationRuntime)
+			fileSize := fmt.Sprintf("%0.3f", float64(utils.GetFileSize(relationRuntime.ModelZipFilePath())/1024.0/1024.0))
+			tp := 0
+			if &relationRuntime.Type != nil {
+				tp = relationRuntime.Type
+			}
+			opFlag := 0
+			if relationRuntime.Developer == userName {
+				opFlag = 1
+			}
+
+			res = map[string]interface{}{
+				"runtime_id":     relationRuntime.ID,
+				"name":           relationRuntime.Name,
+				"chinese_name":   relationRuntime.ChineseName,
+				"description":    relationRuntime.Description,
+				"tag":            relationRuntime.Tag,
+				"file_size":      fileSize,
+				"developer":      relationRuntime.Developer,
+				"build_way":      relationRuntime.BuildWay,
+				"status":         relationRuntime.Status,
+				"type":           tp,
+				"operation_flag": opFlag,
+				"upload_time":    relationRuntime.UpdateTime,
+				"is_relation":    1,
+			}
+			bindRuntime = append(bindRuntime, res)
+		}
+	}
+
+	filterBy := make(map[string]interface{})
+
+	if params.IsUsable != 0 {
+		filterBy["status"] = 1
+	}
+
+	if params.Type == "null" {
+		filterBy["type"] = nil
+	} else {
+		filterBy["type"] = strings.Trim(params.Type, " ")
+	}
+
+	filtersOr := []*gorm.DB{}
+
+	if params.NameOrDesc != "" {
+		searchTerm := "%" + params.NameOrDesc + "%"
+		filtersOr = append(filtersOr, global.CMBP_DB.Where("description LIKE ?", searchTerm))
+		filtersOr = append(filtersOr, global.CMBP_DB.Where("chinese_name LIKE ?", searchTerm))
+		filtersOr = append(filtersOr, global.CMBP_DB.Where("name LIKE ?", searchTerm))
+	}
+
+	var query = global.CMBP_DB.Model(&system.RuntimeAll{}).Where(filterBy)
+
+	if len(filtersOr) > 0 {
+		for _, filter := range filtersOr {
+			query = query.Or(filter)
+		}
+	}
+
+	if relationRuntimeId != "" {
+		query = query.Not("id", relationRuntimeId)
+	}
+
+	query = query.Order("update_time DESC")
+	var count int64
+
+	err = query.Count(&count).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if params.Page != 0 && params.Limit != 0 {
+		offset := (params.Page - 1) * params.Limit
+		if len(bindRuntime) > 0 {
+			if params.Page == 1 {
+				query = query.Limit(params.Limit - 1).Offset(offset)
+			} else {
+				query = query.Limit(params.Limit).Offset(offset - 1)
+			}
+		} else {
+			query = query.Limit(params.Limit).Offset(offset)
+		}
+	}
+
+	var runtimes []system.RuntimeAll
+
+	err = query.Find(&runtimes).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, runtime := range runtimes {
+		tp := 0
+		if &runtime.Type != nil {
+			tp = runtime.Type
+		}
+		opFlag := 0
+		if runtime.Developer == userName {
+			opFlag = 1
+		}
+		bindRuntime = append(bindRuntime, map[string]interface{}{
+			"runtime_id":     runtime.ID,
+			"name":           runtime.Name,
+			"chinese_name":   runtime.ChineseName,
+			"description":    runtime.Description,
+			"tag":            runtime.Tag,
+			"file_size":      fmt.Sprintf("%0.3f", float64(utils.GetFileSize(runtime.ModelZipFilePath())/1024.0/1024.0)),
+			"developer":      runtime.Developer,
+			"build_way":      runtime.BuildWay,
+			"status":         runtime.Status,
+			"type":           tp,
+			"operation_flag": opFlag,
+			"upload_time":    runtime.UpdateTime,
+			"is_relation":    1,
+		})
+	}
+
+	resData := map[string]interface{}{
+		"count":      count,
+		"model_list": bindRuntime,
+	}
+	return resData, nil
 }

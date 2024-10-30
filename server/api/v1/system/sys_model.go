@@ -470,3 +470,32 @@ func (m *ModelOptionApi) AddHotModule(c *gin.Context) {
 	response.Ok(c)
 	return
 }
+
+func (m *ModelOptionApi) JupyterNoteBook(c *gin.Context) {
+	userID := utils.GetUserID(c)
+	respData, err := modelService.JupyterNoteBook(userID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithData(respData, c)
+}
+
+func (m *ModelOptionApi) RunTime(c *gin.Context) {
+	var params systemReq.RunTime
+	if err := c.ShouldBindQuery(&params); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	role := utils.GetUserRole(c)
+	userName := utils.GetUserName(c)
+	global.CMBP_LOG.Info("当前用户的角色是：" + role)
+
+	respData, err := modelService.Runtime(params, role, userName)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithData(respData, c)
+	return
+}

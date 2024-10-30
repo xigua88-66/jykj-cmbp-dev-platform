@@ -30,7 +30,9 @@ func (o *Obs) UploadFile(file *multipart.FileHeader) (string, string, error) {
 				Bucket: global.CMBP_CONFIG.HuaWeiObs.Bucket,
 				Key:    filename,
 			},
-			ContentType: file.Header.Get("content-type"),
+			HttpHeader: obs.HttpHeader{
+				ContentType: file.Header.Get("content-type"),
+			},
 		},
 		Body: open,
 	}
@@ -64,4 +66,33 @@ func (o *Obs) DeleteFile(key string) error {
 		return errors.Wrapf(err, "删除对象(%s)失败!, output: %v", key, output)
 	}
 	return nil
+}
+
+func (o *Obs) SignDownUrl(path string, expire int) (url string, err error) {
+	client, err := NewHuaWeiObsClient()
+	if err != nil {
+		return "", errors.Wrap(err, "获取华为对象存储对象失败!")
+	}
+	//type CreateSignedUrlInput struct {
+	//	Method      HttpMethodType
+	//	Bucket      string
+	//	Key         string
+	//	Policy      string
+	//	SubResource SubResourceType
+	//	Expires     int
+	//	Headers     map[string]string
+	//	QueryParams map[string]string
+	//
+	input := obs.CreateSignedUrlInput{
+		Bucket:  global.CMBP_CONFIG.HuaWeiObs.Bucket,
+		Key:     path,
+		Method:  obs.HttpMethodGet,
+		Expires: global.CMBP_CONFIG.CMBPBase.OssExpireSeconds,
+	}
+
+	signedUrl, err := client.CreateSignedUrl(&input)
+	if err != nil {
+		return "", err
+	}
+	return signedUrl.SignedUrl, nil
 }

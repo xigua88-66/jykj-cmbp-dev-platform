@@ -216,7 +216,7 @@ aws-s3:
 # huawei obs configuration
 hua-wei-obs:
   path: you-path
-  bucket: you-bucket
+  bucket: obs-isf
   endpoint: you-endpoint
   access-key: you-access-key
   secret-key: you-secret-key
@@ -260,6 +260,13 @@ cmbp-base:
   workflow-url: http://172.24.1.134:8008/api/v1.0/tickets
   workflow-app-name: cmbp
   workflow-app-sk: 1491a364-2507-11ed-a8bd-0242ac120004
+  # 运行镜像相关
+  oss-runtime-library: /home/OBS/RuntimeLibrary
+  runtime-down-role: ROOT,MODEL,AIMODEL,ADMIN
+  # 对象存储类型obs/minio
+  oss-mode: minio
+  oss-expire-seconds: 1800
+
 
 # 模型编译相关
 cmbp-model-cfg:
