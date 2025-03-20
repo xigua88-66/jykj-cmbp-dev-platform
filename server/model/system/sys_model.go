@@ -28,6 +28,7 @@ type ModelAll struct {
 	ImgURL                  string `gorm:"size:200"` // 识别模型出入的图片流url
 	BusinessList            string `gorm:"size:200"`
 	BusinessParams          string `gorm:"type:text"`
+	BusinessClass           string `gorm:"type:text"`
 	ModelPurpose            int
 	BusinessAPI             string  `gorm:"type:text"`
 	AiModelAPI              string  `gorm:"type:text"`
@@ -39,7 +40,7 @@ type ModelAll struct {
 	IsRealChannel           string  `gorm:"size:50;default:null"` // 是否逐帧识别 空为逐帧 非空为隔帧
 	AiModelName             string  `gorm:"size:50;default:null"` // 模型库名称 唯一 默认为空（旧模型）
 	AiModelID               string  `gorm:"size:32"`              // 算法id 唯一
-	TestStatus              int     `gorm:"default:null"`         // 测试状态
+	TestStatus              *int    `gorm:"default:null"`         // 测试状态
 	Accuracy                int     // 模型准确率
 	TestDuration            float64 // 模型测试时长
 	MetadataUpdateFlag      int     `gorm:"default:0"` // 模型属性更新
@@ -51,9 +52,10 @@ type ModelAll struct {
 	AlgorithmID             int     // 算法id
 	BuildWay                int     // 模型构建方式，1为手动构建，2为自动构建
 	ModelKind               int
-	UUID                    string `gorm:"size:32"`
-	BusinessType            string `gorm:"type:text"`
-	IsProcess               int    // 模型是否需要审核
+	UUID                    string                  `gorm:"size:32"`
+	BusinessType            string                  `gorm:"type:text"`
+	IsProcess               int                     // 模型是否需要审核
+	BusinessModelAllProxy   []ModelAllBusinessModel `gorm:"foreignKey:ModelAllID" json:"business_model_all_proxy"`
 }
 
 func (ModelAll) TableName() string {
@@ -574,6 +576,20 @@ func (BusinessModelAll) TableName() string {
 	return "t_business_model_all"
 }
 
+// ModelAllBusinessModel 表示模型-业务模型关联表
+type ModelAllBusinessModel struct {
+	global.CmbpModel
+	ModelAllID      string            `gorm:"type:char(32);not null" json:"model_all_id"`
+	BusinessModelID string            `gorm:"type:char(32);not null" json:"business_model_id"`
+	Model           *ModelAll         `gorm:"foreignKey:ModelAllID" json:"-"`
+	BusinessModel   *BusinessModelAll `gorm:"foreignKey:BusinessModelID" json:"-"`
+}
+
+// TableName 返回表名
+func (ModelAllBusinessModel) TableName() string {
+	return "t_model_all_business_model"
+}
+
 type Notebook struct {
 	global.CmbpModel
 	UserID         string `gorm:"not null;size:32"`
@@ -792,4 +808,25 @@ type OnlinePublishing struct {
 // TableName 设置表名
 func (OnlinePublishing) TableName() string {
 	return "t_online_publishing"
+}
+
+// ClassRelatePangu 表示模型关联盘古大模型
+type ClassRelatePangu struct {
+	global.CmbpModel
+	ModelID      string `gorm:"type:varchar(32);comment:'模型id'" json:"model_id"`
+	PanguModelID string `gorm:"type:varchar(100);comment:'盘古大模型id'" json:"pangu_model_id"`
+	ClassName    string `gorm:"type:text;comment:'分析类型'" json:"class_name"`
+}
+
+// TableName 返回表名
+func (ClassRelatePangu) TableName() string {
+	return "t_class_relate_pangu"
+}
+
+type ModelUpdateRecord struct {
+	global.CmbpModel
+	UserID           string `gorm:"column:user_id;type:varchar(32)" json:"user_id" doc:"用户ID"`
+	ModelID          string `gorm:"column:model_id;type:varchar(32)" json:"model_id" doc:"模型ID"`
+	ModelChineseName string `gorm:"column:model_chinese_name;type:varchar(255)" json:"model_chinese_name" doc:"模型名称"`
+	Status           int    `gorm:"column:status type:int" json:"statu" doc:"状态 0 未更新 1 已更新"`
 }

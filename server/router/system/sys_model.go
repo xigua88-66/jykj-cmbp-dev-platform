@@ -23,6 +23,8 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouter.GET("/v1.0/upload_model", modelsApi.NothingToDo)      //前端无意义接口
 		//modelsRouter.GET("/v1.7/model_check", modelsApi.ModelCheck)
 		modelsRouter.GET("/v1.10/jupyter_notebook", modelsApi.JupyterNoteBook)
+		modelsRouter.GET("/v1.8/business_model_info", modelsApi.BusinessInfo) // TODO
+		modelsRouter.GET("/v1.14/check_token", modelsApi.CheckToken)
 
 		modelsRouterV2.GET("models", modelsApi.GetModelStore)           // 模型仓库
 		modelsRouterV2.POST("model", modelsApi.UploadModel)             // 线下构建上传模型
@@ -38,6 +40,7 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouterV5.POST("upload_file", modelsApi.UploadFile)        // 模型仓库上传模型文件
 		modelsRouterV5.GET("get_new_dirs", modelsApi.GetAIModelDirTree) // 模型修改获取目录树
 		modelsRouterV5.GET("runtime", modelsApi.RunTime)                //镜像管理
+		modelsRouterV5.GET("publish_model", modelsApi.PublishModel)     //TODO
 
 		modelsRouterV7.GET("model_check", modelsApi.CheckName)                // 模型名称重复性校验
 		modelsRouterV7.PUT("model", modelsApi.PutModelBusiness)               // 模型业务模型信息修改

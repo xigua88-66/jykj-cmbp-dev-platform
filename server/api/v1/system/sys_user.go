@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -117,36 +118,36 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.Users, isExpire int) {
 	//}
 
 	// TODO 登录数据工厂的
-	//header := map[string]string{}
-	//header["Authorization"] = "Bearer " + token
-	//header["Content-Type"] = "application/json"
-	//body := map[string]string{
-	//	"token":    token,
-	//	"username": user.Phone,
-	//}
-	//marshal, err := json.Marshal(body)
-	//if err != nil {
-	//	return
-	//}
-	//// TODO 请求地址常量抽取
-	//service, err := utils.HttpService("http://172.24.3.26:12306/factory/user_login", "POST", marshal, header)
-	//if err != nil {
-	//	response.FailWithMessage("数据工厂登录失败"+err.Error(), c)
-	//	return
-	//}
-	//
-	//fmt.Println(service)
-	//var res map[string]interface{}
-	//err = json.Unmarshal(service, &res)
-	//if err != nil {
-	//	response.FailWithMessage("数据工厂登录失败", c)
-	//	return
-	//}
-	//fmt.Println(res)
-	//if res["code"].(float64) != float64(20000) {
-	//	response.FailWithMessage("数据工厂登录失败", c)
-	//	return
-	//}
+	header := map[string]string{}
+	header["Authorization"] = "Bearer " + token
+	header["Content-Type"] = "application/json"
+	body := map[string]string{
+		"token":    token,
+		"username": user.Phone,
+	}
+	marshal, err := json.Marshal(body)
+	if err != nil {
+		return
+	}
+	// TODO 请求地址常量抽取
+	service, err := utils.HttpService("http://127.0.0.1:12306/factory/user_login", "POST", marshal, header)
+	if err != nil {
+		response.FailWithMessage("数据工厂登录失败"+err.Error(), c)
+		return
+	}
+
+	fmt.Println(service)
+	var res map[string]interface{}
+	err = json.Unmarshal(service, &res)
+	if err != nil {
+		response.FailWithMessage("数据工厂登录失败", c)
+		return
+	}
+	fmt.Println(res)
+	if res["code"].(float64) != float64(20000) {
+		response.FailWithMessage("数据工厂登录失败", c)
+		return
+	}
 
 	// 不允许多点登录
 	if !global.CMBP_CONFIG.System.UseMultipoint {

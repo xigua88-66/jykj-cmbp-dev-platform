@@ -19,10 +19,12 @@ type CMBPBase struct {
 	RuntimeDownRole     string `mapstructure:"runtime-down-role" json:"runtime-down-role" yaml:"runtime-down-role"`
 	OssMode             string `mapstructure:"oss-mode" json:"oss-mode" yaml:"oss-mode"`
 	OssExpireSeconds    int    `mapstructure:"oss-expire-seconds" json:"oss-expire-seconds" yaml:"oss-expire-seconds"`
+	EndPath             string `mapstructure:"end-path" json:"end-path" yaml:"end-path"`
 }
 
 type CMBPModelCfg struct {
 	CythonPath             string `mapstructure:"cython-path" json:"cython-path" yaml:"cython-path"`
+	CythonPathArm          string `mapstructure:"cython-path-arm" json:"cython-path-arm" yaml:"cython-path-arm"`
 	CythonSrcLibInclude    string `mapstructure:"cython-src-lib-include" json:"cython-src-lib-include" yaml:"cython-src-lib-include"`
 	CythonSrcLibIncludeArm string `mapstructure:"cython-src-lib-include-arm" json:"cython-src-lib-include-arm" yaml:"cython-src-lib-include-arm"`
 }

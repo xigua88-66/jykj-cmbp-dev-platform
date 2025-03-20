@@ -143,3 +143,13 @@ type RunTime struct {
 	IsUsable   int    `form:"is_usable"`
 	ModelID    string `form:"model_id"`
 }
+
+type PublishModel struct {
+	ModelID string `form:"model_id" binding:"required"`
+	UUID    string `form:"uuid" binding:"required"`
+}
+
+type TestFreeApplyCation struct {
+	ModelID string `form:"model_id" binding:"required" json:"model_id"`
+	Reason  string `form:"reason" json:"reason"`
+}

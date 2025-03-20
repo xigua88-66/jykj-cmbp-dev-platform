@@ -199,7 +199,10 @@ func CopyEnd(dest, zipPasswd, processor string) error {
 			}
 		}
 	}
-	end := "/home/models/AIMonitorEnd"
+	end := global.CMBP_CONFIG.CMBPBase.EndPath
+	if end == "" {
+		end = "/home/models/AIMonitorEnd"
+	}
 	err := CopyDir(end, dest)
 	if err != nil {
 		return err

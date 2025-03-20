@@ -136,3 +136,17 @@ func GetUserRole(c *gin.Context) string {
 		return waitUse.Role
 	}
 }
+
+func GetUserPhone(c *gin.Context) string {
+	if claims, exists := c.Get("claims"); !exists {
+		if cl, err := GetClaims(c); err != nil {
+			return ""
+		} else {
+			return cl.Phone
+		}
+	} else {
+		waitUse := claims.(*systemReq.CustomClaims)
+		return waitUse.Phone
+	}
+
+}

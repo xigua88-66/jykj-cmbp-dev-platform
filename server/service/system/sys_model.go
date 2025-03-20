@@ -590,11 +590,11 @@ func ForEachStoreModel(params systemReq.ModelStoreRqe, user system.Users, autoUp
 						}
 					}
 				} else {
-					if strconv.Itoa(ml.TestStatus) == params.TestStatus &&
-						(ml.TestStatus == 3 ||
-							ml.TestStatus == 4 ||
-							ml.TestStatus == 5 ||
-							ml.TestStatus == 6) {
+					if strconv.Itoa(*ml.TestStatus) == params.TestStatus &&
+						(*ml.TestStatus == 3 ||
+							*ml.TestStatus == 4 ||
+							*ml.TestStatus == 5 ||
+							*ml.TestStatus == 6) {
 						// TODO 去重
 						idList = append(idList, ml.ID)
 					}
@@ -760,7 +760,7 @@ func GetTestStatus(m system.ModelAll) int {
 				} else if err1 == nil && status1 == -1 {
 					return 6
 				} else {
-					return m.TestStatus
+					return *m.TestStatus
 				}
 			}
 			if (err1 == nil && status1 == 1) || (err2 == nil && status2 == 1) {
@@ -768,7 +768,7 @@ func GetTestStatus(m system.ModelAll) int {
 			} else if (err1 == nil && status1 == -1) || (err2 == nil && status2 == -1) {
 				return 4 // 文件压缩失败
 			} else if err1 != nil && err2 != nil && m.MD5 != "" {
-				return m.TestStatus //压缩成功，待测试
+				return *m.TestStatus //压缩成功，待测试
 			} else {
 				return 3
 			}
@@ -778,13 +778,13 @@ func GetTestStatus(m system.ModelAll) int {
 			} else if err1 == nil && status1 == -1 {
 				return 4
 			} else if err1 != nil && m.MD5 != "" {
-				return m.TestStatus
+				return *m.TestStatus
 			} else {
 				return 4
 			}
 		}
 	} else {
-		return m.TestStatus
+		return *m.TestStatus
 	}
 }
 
@@ -1170,6 +1170,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 		onBoot = true
 	}
 
+	testStatus := 0
 	modelAll := system.ModelAll{
 		ModelType:              params.ModelType,
 		FieldCode:              fieldCode,
@@ -1200,7 +1201,7 @@ func (modelService *ModelService) UploadModel(params systemReq.UploadModelStoreR
 		IsRealChannel:          params.IsRealChannel,
 		AuditState:             1,
 		User:                   userId,
-		TestStatus:             0,
+		TestStatus:             &testStatus,
 		NewModelFlag:           true,
 		IndustryCode:           industryCode,
 		ModelKind:              modelKind,
@@ -1601,6 +1602,102 @@ func (modelService *ModelService) GetTestFreeApplication(params systemReq.GetTes
 	//}
 }
 
+func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeApplyCation, userID string) (rspData interface{}, err error) {
+	var modelAll system.ModelAll
+	err = global.CMBP_DB.Model(&system.ModelAll{}).Where("id=?", params.ModelID).First(&modelAll).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("模型不存在，请传递正确模型id")
+		}
+		return nil, err
+	}
+
+	isProcess := modelAll.IsProcess
+	var applyCationOld system.ApplicationRecord
+	err = global.CMBP_DB.Model(&system.ApplicationRecord{}).Where("model_id=?", modelAll.ID).First(&applyCationOld).Error
+	if err != nil {
+		global.CMBP_LOG.Warn(fmt.Sprintf("记录查询报错是:%v", err.Error()))
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+	}
+	modelUpdateStatus := 0
+	if isProcess == 1 {
+		*modelAll.TestStatus = 99
+		modelAll.IsProcess = 0
+		err = global.CMBP_DB.Save(&system.ApplicationRecord{
+			ModelID:           params.ModelID,
+			ApplicationStatus: 99,
+			Reason:            params.Reason,
+			User:              userID,
+			ProcessType:       1,
+		}).Error
+		if err != nil {
+			global.CMBP_LOG.Error(fmt.Sprintf("数据库报错报错了：:%v", err.Error()))
+			return nil, err
+		}
+	} else {
+		modelUpdateStatus = 1
+		if modelAll.ModelKind != 1 {
+			*modelAll.TestStatus = 201
+
+			// TODO 更新边缘平台下载的模型
+		} else {
+			modelAll.TestStatus = nil
+		}
+		err = global.CMBP_DB.Save(&modelAll).Error
+		if err != nil {
+			global.CMBP_LOG.Error(fmt.Sprintf("数据库报错报错了：:%v", err.Error()))
+			return nil, err
+		}
+
+		var developer string
+		err = global.CMBP_DB.Model(&system.Users{}).Where("id=?", modelAll.User).Pluck("username", &developer).Error
+		if err != nil {
+			return nil, err
+		}
+		if applyCationOld.ID != "" {
+			// TODO 判断用了这个模型的用户，给他们的钉钉发消息
+		}
+		global.CMBP_LOG.Info(fmt.Sprintf("开发者:%v", developer))
+	}
+
+	if applyCationOld.ApplicationStatus == 101 {
+		err = global.CMBP_DB.Save(system.ModelUpdateRecord{
+			UserID:           userID,
+			ModelID:          params.ModelID,
+			ModelChineseName: modelAll.ModelChineseName,
+			Status:           modelUpdateStatus,
+		}).Error
+		if err != nil {
+			global.CMBP_LOG.Error(fmt.Sprintf("数据库报错报错了：:%v", err.Error()))
+			return nil, err
+		}
+	}
+	if applyCationOld.ID != "" {
+		err = global.CMBP_DB.Delete(&system.ApplicationRecord{}, "model_id=?", params.ModelID).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func asyncPublishModel(modelID, userName string) {
+	global.CMBP_LOG.Info(fmt.Sprintf("更新矿编码下模型：:%v", modelID))
+	var modelAll system.ModelAll
+	err := global.CMBP_DB.Model(&system.ModelAll{}).Where("id=?", modelID).First(&modelAll).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			global.CMBP_LOG.Error(fmt.Sprintf("模型不存在:%v", modelID))
+			return
+		}
+	}
+	var mineModel []system.Model
+	err = global.CMBP_DB.Model(&system.Model{}).Where("model_all_id=?", modelID).Find(&mineModel).Error
+
+}
+
 func (modelService *ModelService) CheckName(params systemReq.CheckName, userId string) (interface{}, error) {
 	exists := false
 	obsPath := ""
@@ -1682,7 +1779,7 @@ func (modelService *ModelService) CheckName(params systemReq.CheckName, userId s
 	return resData, nil
 }
 
-func (ModelService *ModelService) DeleteModel(modelID string) (resData interface{}, err error) {
+func (modelService *ModelService) DeleteModel(modelID string) (resData interface{}, err error) {
 	var model system.ModelAll
 	global.CMBP_DB.Model(system.ModelAll{}).Where("id = ?", modelID).First(&model)
 	if model.ID == "" {
@@ -1777,7 +1874,7 @@ func (ModelService *ModelService) DeleteModel(modelID string) (resData interface
 	return allModelID, nil
 }
 
-func (m *ModelService) JupyterNoteBook(userID string) (respData interface{}, err error) {
+func (modelService *ModelService) JupyterNoteBook(userID string) (respData interface{}, err error) {
 	var noteBook []system.Notebook
 	global.CMBP_DB.Model(&system.Notebook{}).Where("user_id = ? AND status = 1", userID).Order("status DESC").Order("create_time DESC").Find(&noteBook)
 	expireTime := 0
@@ -1807,7 +1904,7 @@ func (m *ModelService) JupyterNoteBook(userID string) (respData interface{}, err
 	return respData, nil
 }
 
-func (m *ModelService) Runtime(params systemReq.RunTime, role, userName string) (res interface{}, err error) {
+func (modelService *ModelService) Runtime(params systemReq.RunTime, role, userName string) (res interface{}, err error) {
 	if params.RuntimeID != "" {
 		var runTime system.RuntimeAll
 		global.CMBP_DB.Model(&system.RuntimeAll{}).Where("id = ?", params.RuntimeID).First(&runTime)
@@ -1864,7 +1961,7 @@ func (m *ModelService) Runtime(params systemReq.RunTime, role, userName string) 
 		return res, nil
 	}
 	relationRuntimeId := ""
-	var bindRuntime []interface{}
+	bindRuntime := []interface{}{}
 	if params.ModelID != "" {
 		var modelRuntime system.RuntimeModels
 		global.CMBP_DB.Where("model_all_id = ?", params.ModelID).First(&modelRuntime)
@@ -1991,5 +2088,315 @@ func (m *ModelService) Runtime(params systemReq.RunTime, role, userName string) 
 		"count":      count,
 		"model_list": bindRuntime,
 	}
+	return resData, nil
+}
+
+func (modelService *ModelService) PublishModel(params systemReq.PublishModel, userID string) (res interface{}, err error) {
+	var modelAll system.ModelAll
+	global.CMBP_DB.Where("id = ?", params.ModelID).Find(&modelAll)
+	if modelAll.ID == "" {
+		return nil, errors.New("请传递正确的模型id")
+	}
+	global.CMBP_LOG.Info("模型查询成功")
+	aiModelFlag := false
+	aiModelName := ""
+	aiModelDesc := ""
+	var dataModel system.DataAnalyzeModelAll
+	var aiModel system.AIModelAll
+	onLineFlag := 1 // 线上制作
+	if modelAll.AiModelName != "" {
+		if modelAll.ModelKind == 1 {
+			global.CMBP_DB.Where("model_name = ?", modelAll.AiModelName).Find(&dataModel)
+			if dataModel.ID != "" {
+				aiModelDesc = dataModel.ModelDescription
+				aiModelName = dataModel.ModelName
+				if modelAll.UpdateTime.Before(*dataModel.UpdateTime) {
+					aiModelFlag = true
+				}
+			}
+		} else {
+			global.CMBP_DB.Where("model_name = ?", modelAll.AiModelName).Where("id = ?", modelAll.ID).Find(&dataModel)
+			if dataModel.ID != "" {
+				return nil, errors.New("未找到该算法")
+			}
+			aiModelDesc = aiModel.ModelDescription
+			aiModelName = aiModel.ModelName
+			if modelAll.UpdateTime.Before(*aiModel.UpdateTime) {
+				aiModelFlag = true
+			}
+		}
+	} else {
+		aiModelDesc = modelAll.ModelDescription
+		onLineFlag = 0
+	}
+	targetPath := fmt.Sprintf("/home/tmp/%s/%s", userID, params.UUID)
+	global.CMBP_LOG.Info("判断模型类型")
+	modelPath := filepath.Join(global.CMBP_CONFIG.CMBPBase.ModelWareHouse, modelAll.ModelNameAndVersion())
+
+	if modelAll.ModelKind != 1 {
+		global.CMBP_LOG.Info("模型的路径：" + modelPath)
+		exists, _ := utils.PathExists(modelPath)
+		if exists {
+			businessModelIDList := []string{}
+			for _, bus := range modelAll.BusinessModelAllProxy {
+				businessModelIDList = append(businessModelIDList, bus.BusinessModel.ID)
+			}
+			if len(businessModelIDList) > 0 {
+				fileList, err := os.ReadDir(filepath.Join(modelPath, "plugins"))
+				if err != nil {
+					return nil, err
+				}
+				for _, file := range fileList {
+					for _, b := range businessModelIDList {
+						if strings.HasPrefix(file.Name(), "_"+b) || strings.HasPrefix(file.Name(), b) {
+							// 以业务模型ID开头的文件夹，均需要删除
+							err := utils.DeLFile(filepath.Join(filepath.Join(modelPath, "plugins"), file.Name()))
+							if err != nil {
+								return nil, err
+							}
+							break
+						}
+					}
+				}
+			}
+			for _, soFile := range []string{"file_operation_86.so", "file_operation_arm.so"} {
+				soFilePath := filepath.Join(modelPath, soFile)
+				global.CMBP_LOG.Info("删除AIMonitorEnd的so文件" + soFilePath)
+				err = utils.DeLFile(soFilePath)
+				if err != nil {
+					global.CMBP_LOG.Error("删除AIMonitorEnd下的so文件失败" + soFilePath)
+				}
+			}
+		} else {
+			utils.Unzip(modelAll.ModelZipFile(), targetPath)
+		}
+	}
+	// 大数据和图像分析模型都统一一个复制方法
+	err = utils.CopyDir(modelPath, targetPath)
+	if err != nil {
+		return nil, errors.New("拷贝model_warehouse到tmp目录失败" + err.Error())
+	}
+	err = utils.CopyEnd(targetPath, "", "")
+	if err != nil {
+		return nil, errors.New("拷贝End到tmp目录失败" + err.Error())
+	}
+	global.CMBP_LOG.Info("复制完成model_warehouse，AIMonitorEnd到tmp目录")
+
+	var modelType system.ModelType
+	global.CMBP_DB.Where("model_type = ?", modelAll.ModelType).Find(&modelType)
+
+	//if modelAll.User == "" {
+	//
+	//}
+	var user system.Users
+	global.CMBP_DB.Where("id = ?", modelAll.User).Find(&user)
+
+	businessList := []interface{}{}
+	businessNameList := []interface{}{}
+	var busParams map[string]interface{}
+	for _, b := range modelAll.BusinessModelAllProxy {
+		err = json.Unmarshal([]byte(b.BusinessModel.BusinessParams), &busParams)
+		if err != nil {
+			return nil, errors.New("业务模型参数business_params提取失败" + err.Error())
+		}
+		if len(busParams) > 0 {
+			for _, k := range busParams {
+				businessNameList = append(businessNameList, k)
+			}
+		}
+	}
+	var businessType map[string]interface{}
+	if modelAll.BusinessType != "" {
+		err = json.Unmarshal([]byte(modelAll.BusinessType), &businessType)
+		if err != nil {
+			return nil, errors.New("业务模型参数BusinessType提取失败" + err.Error())
+		}
+	} else {
+		businessType = make(map[string]interface{})
+	}
+	var businessApi map[string]interface{}
+	err = json.Unmarshal([]byte(modelAll.BusinessAPI), &businessApi)
+	if err != nil {
+		return nil, errors.New("业务模型参数BusinessAPI提取失败" + err.Error())
+	}
+	businessClass := map[string]interface{}{}
+	if modelAll.BusinessClass != "" {
+		err = json.Unmarshal([]byte(modelAll.BusinessClass), &businessClass)
+		if err != nil {
+			return nil, errors.New("业务模型参数BusinessClass提取失败" + err.Error())
+		}
+	}
+	if modelAll.BusinessParams != "" {
+		var modelAllBusParams map[string]interface{}
+		_ = json.Unmarshal([]byte(modelAll.BusinessParams), &modelAllBusParams)
+		for k, v := range modelAllBusParams {
+			business := map[string]interface{}{}
+			for _, bName := range businessNameList {
+				if bName == k {
+					// 如果业务模型是从业务模型库关联的，则返回给前端的时候，去掉关联的业务模型名称和参数信息
+					continue
+				}
+				business["business_name"] = k
+				business["business_params"] = v
+			}
+			for _, i := range v.([]map[string]interface{}) {
+				for vk, _ := range i {
+					if !strings.Contains("paras_text", vk) {
+						i["paras_text"] = i["paras_desc"]
+					}
+				}
+			}
+			business["business_type"] = []interface{}{}
+			for _, btype := range businessType {
+				if btype == k {
+					business["business_type"] = businessType[k]
+				}
+			}
+			bAPI := map[string]interface{}{}
+			if businessApi[k] != nil {
+				bAPI = businessApi[k].(map[string]interface{})
+			}
+			bClass := []interface{}{}
+			if businessClass[k] != nil {
+				bClass = businessClass[k].([]interface{})
+			}
+			business["business_apis"] = bAPI
+			business["business_classes"] = bClass
+			businessList = append(businessList, business)
+		}
+	} else if businessType != nil {
+		for k, v := range businessType {
+			business := map[string]interface{}{}
+			business["business_name"] = k
+			business["business_type"] = v
+			business["business_class"] = []interface{}{}
+			business["business_apis"] = map[string]interface{}{}
+			business["business_params"] = []interface{}{}
+		}
+	}
+	global.CMBP_LOG.Info("提取业务模型参数")
+	var hardArch system.HardwareArch
+	var runtimeModel system.RuntimeModels
+	global.CMBP_DB.Where("code = ?", params.ModelID).Find(&hardArch)
+	global.CMBP_DB.Where("model_all_id = ?", params.ModelID).Find(&runtimeModel)
+	runtimeID := ""
+	if runtimeModel.ID != "" {
+		runtimeID = runtimeModel.ID
+	}
+	var industryName, modelKindName, algorithmName string
+	global.CMBP_DB.Model(&system.Industry{}).Where("industry_code = ?", modelAll.IndustryCode).Pluck("industry_name", &industryName)
+	global.CMBP_DB.Model(&system.ModelKind{}).Where("model_kind = ?", modelAll.ModelKind).Pluck("kind_name", &modelKindName)
+	global.CMBP_DB.Model(&system.AlgorithmInfo{}).Where("algorithm_id = ?", modelAll.AlgorithmID).Pluck("algorithm_name", &algorithmName)
+
+	modelChinessName := modelAll.ModelChineseName
+	chinessName := strings.Split(modelAll.ModelChineseName, "-")
+	if len(chinessName) > 2 {
+		modelChinessName = strings.Join(chinessName[:len(chinessName)-2], "-")
+	}
+
+	resData := map[string]interface{}{
+		"model_id":        modelAll.ID,
+		"industry_code":   modelAll.IndustryCode,
+		"industry_name":   industryName,
+		"model_kind":      modelAll.ModelKind,
+		"model_kind_name": modelKindName,
+		"algorithm_id":    modelAll.AlgorithmID,
+		"algorithm_name":  algorithmName,
+		"build_way":       modelAll.BuildWay,
+		"model_field":     modelType.ModelField.Name,
+		"model_big_type":  modelType.ModelField.Code,
+
+		"model_type_desc":         modelType.ModelTypeDesc,
+		"model_type":              modelType.ModelType,
+		"model_name":              modelAll.ModelName,
+		"model_chinese_name":      modelChinessName,
+		"model_version":           modelAll.ModelVersion,
+		"ai_model_description":    aiModelDesc,
+		"model_description":       modelAll.ModelDescription,
+		"technical_description":   modelAll.TechnicalDescription,
+		"performance_description": modelAll.PerformanceDescription,
+		"hardware_type":           hardArch.Name,
+		"hardware_type_code":      hardArch.Code,
+		"is_image": func() string {
+			if modelAll.IsImage {
+				return "1"
+			} else {
+				return "0"
+			}
+		},
+		"need_gpu": func() string {
+			if modelAll.NeedGPU {
+				return "1"
+			} else {
+				return "0"
+			}
+		},
+		"is_real_channel": func() string {
+			if modelAll.IsRealChannel == "" {
+				return "1"
+			} else {
+				return "0"
+			}
+		},
+		"ai_model_name": func() string {
+			if aiModelName != "" {
+				return aiModelName
+			} else {
+				return modelAll.ModelName
+			}
+		},
+		"cmd":      modelAll.CMD,
+		"json_url": modelAll.JsonURL,
+		"img_url":  modelAll.ImgURL,
+		"on_boot": func() string {
+			if modelAll.OnBoot {
+				return "1"
+			} else {
+				return "0"
+			}
+		},
+		"user":          modelAll.User,
+		"developer":     user.Username, // 模型开发上传人员
+		"upload_time":   modelAll.UpdateTime,
+		"business_dict": businessList,
+		"test_duration": modelAll.TestDuration,
+		"accuracy":      modelAll.Accuracy,
+		"runtime_id": func() *string {
+			if modelAll.IsImage {
+				return &runtimeID
+			} else {
+				return nil
+			}
+		},
+		"business_model_list": func() []map[string]interface{} {
+			var busRes []map[string]interface{}
+			for _, b := range modelAll.BusinessModelAllProxy {
+				busRes = append(busRes, map[string]interface{}{
+					"id":   b.BusinessModel.ID,
+					"name": b.BusinessModel.ModelName,
+				})
+			}
+			return busRes
+		}, //所选的业务模型id
+		"img_path": filepath.Join("/models/models/", modelAll.ModelNameAndVersion(), ".jpg"),
+		"video_path": func() string {
+			exists, _ := utils.PathExists(modelAll.ModelVideoFile())
+			if exists {
+				return filepath.Join("/models/models", modelAll.ModelNameAndVersion(), ".mp4")
+			} else {
+				return ""
+			}
+		},
+
+		"ai_model_flag":   aiModelFlag,
+		"on_line_flag":    onLineFlag,
+		"advantage":       modelAll.Advantage,
+		"model_purpose":   modelAll.ModelPurpose,
+		"is_relate_pangu": 0,
+		"pangu_model_id":  "",
+	}
+	var panguBigModel system.ClassRelatePangu
+	global.CMBP_DB.Where("model_id = ?", params.ModelID).Find(&panguBigModel)
+	//if panguBigModel.ID
 	return resData, nil
 }

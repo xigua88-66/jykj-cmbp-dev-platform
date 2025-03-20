@@ -53,12 +53,12 @@ email:
 # system configuration
 system:
   env: local # 修改为public可以关闭路由日志输出
-  addr: 8888
+  addr: 8889
   db-type: mysql
   oss-type: local # 控制oss选择走本地还是 七牛等其他仓 自行增加其他oss仓可以在 server/utils/upload/upload.go 中 NewOss函数配置
-  use-redis: false # 使用redis
+  use-redis: true # 使用redis
   use-mongo: false     # 使用mongo
-  use-multipoint: true
+  use-multipoint: false
   # IP限制次数 一个小时15000次
   iplimit-count: 15000
   #  IP限制一个小时
@@ -77,12 +77,12 @@ captcha:
 # mysql connect configuration
 # 未初始化之前请勿手动修改数据库信息！！！如果一定要手动初始化请看（https://gin-vue-admin.com/docs/first_master）
 mysql:
-  path: "39.107.100.191"
+  path: "182.92.217.91"
   port: "3306"
   config: "charset=utf8mb4&parseTime=True&loc=Local"
   db-name: "cmbp"
   username: "root"
-  password: "openIM"
+  password: "JYKJjykj123!@#213"
   max-idle-conns: 10
   max-open-conns: 100
   log-mode: ""
@@ -266,12 +266,14 @@ cmbp-base:
   # 对象存储类型obs/minio
   oss-mode: minio
   oss-expire-seconds: 1800
+  end-path: /home/models/AIMonitorEnd
 
 
 # 模型编译相关
 cmbp-model-cfg:
   # 绝对路径或环境变量中存在的部分
-  cython-path: cython
+  cython-path: /cmbp/Python370/bin/cython
+  cython-path-arm: cython
   # py2so中python的C文件,X86
   cython-src-lib-include: /usr/include/python3.6m
-  cython-src-lib-include-arm:
+  cython-src-lib-include-arm: /usr/local/include/python3.5m

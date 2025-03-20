@@ -243,13 +243,29 @@ func (m *ModelOptionApi) GetTestFreeApplication(c *gin.Context) {
 	rspData, err := modelService.GetTestFreeApplication(params)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
+		return
 	} else {
 		response.OkWithData(rspData, c)
+		return
 	}
 }
 
 func (m *ModelOptionApi) PostTestFreeApplication(c *gin.Context) {
+	var params systemReq.TestFreeApplyCation
+	err := c.ShouldBindJSON(&params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	userID := utils.GetUserID(c)
 
+	_, err = modelService.TestFreeApplyCation(params, userID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.Ok(c)
+	return
 }
 
 func (m *ModelOptionApi) UploadFile(c *gin.Context) {
@@ -497,5 +513,41 @@ func (m *ModelOptionApi) RunTime(c *gin.Context) {
 		return
 	}
 	response.OkWithData(respData, c)
+	return
+}
+
+func (m *ModelOptionApi) BusinessInfo(c *gin.Context) {
+	response.Ok(c)
+	return
+}
+
+func (m *ModelOptionApi) CheckToken(c *gin.Context) {
+	phone := utils.GetUserPhone(c)
+	global.CMBP_LOG.Info(fmt.Sprintf("用户的手机号是：%v", phone))
+	if phone != "" {
+		data := make(map[string]interface{})
+		data["phone"] = phone
+		response.OkWithData(data, c)
+		return
+	} else {
+		response.FailWithMessage("获取手机号失败", c)
+		return
+	}
+
+}
+
+func (m *ModelOptionApi) PublishModel(c *gin.Context) {
+	var params systemReq.PublishModel
+	if err := c.ShouldBindQuery(&params); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	userID := utils.GetUserID(c)
+	resData, err := modelService.PublishModel(params, userID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithData(resData, c)
 	return
 }

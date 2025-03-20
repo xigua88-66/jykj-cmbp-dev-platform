@@ -160,7 +160,7 @@ func ReverseInt(a []int) []int {
 func Py2So(dest, encryptFile, processor string) error {
 	py2Ccmd := fmt.Sprintf("%s -3 %s", global.CMBP_CONFIG.CMBPModelCfg.CythonPath, encryptFile)
 	if processor == "arm" {
-		py2Ccmd = fmt.Sprintf("%s -3 %s", global.CMBP_CONFIG.CMBPModelCfg.CythonPath, encryptFile)
+		py2Ccmd = fmt.Sprintf("%s -3 %s", global.CMBP_CONFIG.CMBPModelCfg.CythonPathArm, encryptFile)
 	}
 	pythonDesc := global.CMBP_CONFIG.CMBPModelCfg.CythonSrcLibInclude
 	if processor == "arm" {
