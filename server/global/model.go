@@ -22,6 +22,9 @@ func (m *CmbpModel) BeforeCreate(tx *gorm.DB) (err error) {
 		return errors.New("生成UUID失败")
 	}
 	shortUUID := strings.ToUpper(strings.Join(strings.Split(uid.String(), "-"), ""))
+	if m.ID != "" {
+		return nil
+	}
 	m.ID = shortUUID
 	now := time.Now()
 	if m.CreateTime == nil {

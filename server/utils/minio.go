@@ -5,18 +5,21 @@ import (
 	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"jykj-cmbp-dev-platform/server/global"
 	"log"
 	"net/url"
 	"time"
 )
 
+var MinIOObj = new(MinIO)
+
 type MinIO struct {
 }
 
 func (m *MinIO) MinioClient() *minio.Client {
-	endpoint := "172.24.1.71:9000"
-	accessKeyID := "admin123456"
-	secretAccessKey := "admin123456"
+	endpoint := global.CMBP_CONFIG.MinIO.Endpoint
+	accessKeyID := global.CMBP_CONFIG.MinIO.AccessKey
+	secretAccessKey := global.CMBP_CONFIG.MinIO.SecretKey
 
 	// 初始化Minio客户端
 	client, err := minio.New(endpoint, &minio.Options{
@@ -32,7 +35,7 @@ func (m *MinIO) MinioClient() *minio.Client {
 // StreamUpload 流式上传
 func (m *MinIO) StreamUpload(bucketName, objectName, filePath string) error {
 	if bucketName == "" {
-		bucketName = "obs-isf"
+		bucketName = global.CMBP_CONFIG.MinIO.Bucket
 	}
 	client := m.MinioClient()
 	// 流式上传文件

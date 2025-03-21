@@ -34,4 +34,6 @@ type Server struct {
 	CMBPBase CMBPBase `mapstructure:"cmbp-base" json:"cmbp-base" yaml:"cmbp-base"`
 
 	CMBPModelCfg CMBPModelCfg `mapstructure:"cmbp-model-cfg" json:"cmbp-model-cfg" yaml:"cmbp-model-cfg"`
+
+	MinIO Minio `mapstructure:"minio" json:"minio" yaml:"minio"`
 }

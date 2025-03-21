@@ -1,7 +1,10 @@
 package upload
 
 import (
+	"fmt"
 	"mime/multipart"
+	"net/http"
+	"strings"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/pkg/errors"
@@ -95,4 +98,44 @@ func (o *Obs) SignDownUrl(path string, expire int) (url string, err error) {
 		return "", err
 	}
 	return signedUrl.SignedUrl, nil
+}
+
+func (o *Obs) Download(bucket, objKey, localPath string) (err error) {
+	if !strings.HasSuffix(objKey, "/") {
+		objKey = "/" + objKey
+	}
+	client, err := NewHuaWeiObsClient()
+	if err != nil {
+		return err
+	}
+
+	if bucket == "" {
+		bucket = global.CMBP_CONFIG.HuaWeiObs.Bucket
+	}
+
+	input := new(obs.DownloadFileInput)
+	input.Bucket = bucket
+	input.Key = objKey
+	input.DownloadFile = localPath
+	input.PartSize = 10 * 1024 * 1024
+	input.EnableCheckpoint = true
+
+	// 构造下载参数
+	//input := &obs.DownloadFileInput{
+	//	Bucket:       bucket,        // 必须指定存储桶
+	//	Key:          objKey,        // 对象键（保持原始值）
+	//	SaveAsStream: false,         // 明确指定保存方式
+	//	DownloadFile: localPath,     // 本地保存路径
+	//	PartSize:     10 * 1024 * 1024, // 分段下载大小（10MB）
+	//	EnableCheckpoint: true,      // 启用断点续传
+	//}
+
+	resp, err := client.DownloadFile(input)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("OBS下载：%v到本地失败", objKey))
+	}
+	return nil
 }

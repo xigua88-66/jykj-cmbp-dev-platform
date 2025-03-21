@@ -20,6 +20,7 @@ type CMBPBase struct {
 	OssMode             string `mapstructure:"oss-mode" json:"oss-mode" yaml:"oss-mode"`
 	OssExpireSeconds    int    `mapstructure:"oss-expire-seconds" json:"oss-expire-seconds" yaml:"oss-expire-seconds"`
 	EndPath             string `mapstructure:"end-path" json:"end-path" yaml:"end-path"`
+	MineModelDir        string `mapstructure:"mine-model-dir" json:"mine-model-dir" yaml:"mine-model-dir"` // 边缘平台矿编码的父目录
 }
 
 type CMBPModelCfg struct {

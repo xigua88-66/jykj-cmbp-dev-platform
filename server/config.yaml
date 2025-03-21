@@ -221,6 +221,13 @@ hua-wei-obs:
   access-key: you-access-key
   secret-key: you-secret-key
 
+minio:
+  endpoint: http://172.24.1.71:9000
+  access-key: admin123456
+  secret-key: admin123456
+  bucket: obs-isf
+
+
 # excel configuration
 excel:
   dir: ./resource/excel/
@@ -251,6 +258,7 @@ cmbp-base:
   model-warehouse-media: models/models_media
   model-warehouse: /home/model_warehouse
   model-path: /home/models/models
+  mine-model-dir: /home/models
   # OBS模型存放目录,保留%号
   oss-model-path: /home/OBS/models/models/%s/
   oss-model-media: /home/OBS/models/models_media

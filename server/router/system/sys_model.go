@@ -35,6 +35,7 @@ func (s *ModelsOptionRouter) InitModelsOptionRouter(Router *gin.RouterGroup) {
 		modelsRouterV5.DELETE("unpublish_model", modelsApi.UnPublishModel) // 取消模型操作的uuid
 		modelsRouterV5.GET("test_free_application", modelsApi.GetTestFreeApplication)
 		modelsRouterV5.POST("test_free_application", modelsApi.PostTestFreeApplication)
+		modelsRouterV5.DELETE("test_free_application", modelsApi.DeleteTestFreeApplication)
 		//modelsRouterV5.PUT("test_free_application", modelsApi.PutTestFreeApplication)       // 取消模型操作的uuid
 		//modelsRouterV5.DELETE("test_free_application", modelsApi.DeleteTestFreeApplication) // 取消模型操作的uuid
 		modelsRouterV5.POST("upload_file", modelsApi.UploadFile)        // 模型仓库上传模型文件

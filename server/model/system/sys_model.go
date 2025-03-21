@@ -1,6 +1,8 @@
 package system
 
 import (
+	"fmt"
+	"gorm.io/gorm"
 	"jykj-cmbp-dev-platform/server/global"
 	"path/filepath"
 	"strconv"
@@ -339,13 +341,21 @@ type Model struct {
 	PayStatus        int           `gorm:"column:pay_status"`
 	IsRealChannel    *string       `gorm:"column:is_real_channel;size:50"`
 	Accuracy         int           `gorm:"column:accuracy"`
-	TestDuration     int           `gorm:"column:test_duration"`
+	TestDuration     float64       `gorm:"column:test_duration"`
 	NewModelFlag     int           `gorm:"column:new_model_flag"`
 	BusinessType     string        `gorm:"column:business_type;text"`
 }
 
 func (Model) TableName() string {
 	return "t_model_info"
+}
+
+func (m *Model) ModelNameAndVersion() string {
+	return m.ModelName + "V" + m.ModelVersion
+}
+
+func (m *Model) ModelZipFile() string {
+	return filepath.Join(global.CMBP_CONFIG.CMBPBase.MineModelDir, m.MineCode, m.ModelChineseName+".zip")
 }
 
 type ModelConfig struct {
@@ -661,35 +671,52 @@ func (WeightsManagement) TableName() string {
 }
 
 type TestFreeModelRes struct {
-	ModelID              string                 `json:"model_id"`
-	ModelTypeDesc        string                 `json:"model_type_desc"`
-	ModelFieldDesc       string                 `json:"model_field_desc"`
-	ModelName            string                 `json:"model_name"`
-	ModelChineseName     string                 `json:"model_chinese_name"`
-	ModelVersion         string                 `json:"model_version"`
-	ModelDescription     string                 `json:"model_description"`
-	TechnicalDescription string                 `json:"technical_description"`
-	PerformanceDesc      string                 `json:"performance_desc"`
-	HardwareTypeName     string                 `json:"hardware_type_name"`
-	IsImage              string                 `json:"is_image"`
-	Cmd                  string                 `json:"cmd"`
-	JsonURL              string                 `json:"json_url"`
-	ImgURL               string                 `json:"img_url"`
-	OnBoot               string                 `json:"on_boot"`
-	NeedGPU              string                 `json:"need_gpu"`
-	AuditState           string                 `json:"audit_state"`
-	User                 string                 `json:"user"`
-	Developer            string                 `json:"developer;default:ROOT"`
-	UploadTime           string                 `json:"upload_time"`
-	BusinessDict         map[string]interface{} `json:"business_dict"`
-	ImgPath              string                 `json:"img_path"`
-	Img2Path             string                 `json:"img2_path"`
-	VideoPath            string                 `json:"video_path"`
-	Edit                 string                 `json:"edit"`
-	TestStatus           string                 `json:"test_status"`
-	Reason               string                 `json:"reason"`
-	Phone                string                 `json:"phone"`
-	ApplicationTime      time.Time              `json:"application_time"`
+	ModelID              string `json:"model_id"`
+	ModelKind            int    `json:"-" gorm:"column:model_kind"`
+	Edition              int    `json:"-" gorm:"column:edition"`
+	ModelTypeDesc        string `json:"model_type_desc"`
+	ModelFieldDesc       string `json:"model_field_desc"`
+	ModelName            string `json:"model_name"`
+	ModelChineseName     string `json:"model_chinese_name"`
+	ModelVersion         string `json:"model_version"`
+	ModelDescription     string `json:"model_description"`
+	TechnicalDescription string `json:"technical_description"`
+	PerformanceDesc      string `json:"performance_desc"`
+	HardwareTypeName     string `json:"hardware_type_name"`
+	IsImage              string `json:"is_image"`
+	Cmd                  string `json:"cmd"`
+	JsonURL              string `json:"json_url"`
+	ImgURL               string `json:"img_url"`
+	OnBoot               string `json:"on_boot"`
+	NeedGPU              string `json:"need_gpu"`
+	AuditState           string `json:"audit_state"`
+	User                 string `json:"user"`
+	Developer            string `json:"developer"`
+	UploadTime           string `json:"upload_time"`
+	ImgPath              string `json:"img_path" gorm:"-"`
+	Img2Path             string `json:"img2_path" gorm:"-"`
+	VideoPath            string `json:"video_path" gorm:"-"`
+	Edit                 string `json:"edit"`
+	TestStatus           int    `json:"test_status"`
+	Reason               string `json:"reason"`
+	Phone                string `json:"phone"`
+	ApplicationTime      string `json:"application_time"`
+	ProcessType          int    `json:"process_type"`
+}
+
+func (m *TestFreeModelRes) AfterFind(tx *gorm.DB) (err error) {
+	// 图片路径生成
+	if m.ModelKind != 1 {
+		baseName := m.ModelName + "V" + m.ModelVersion
+		m.ImgPath = filepath.Join(global.CMBP_CONFIG.CMBPBase.OssPath, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia, baseName+".jpg")
+		m.VideoPath = filepath.Join(global.CMBP_CONFIG.CMBPBase.OssPath, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia, baseName+".mp4")
+	} else {
+		versionInt := m.ModelVersion
+		formattedName := fmt.Sprintf("%sV%d.%s", m.ModelName, versionInt, m.Edition)
+		m.ImgPath = filepath.Join(global.CMBP_CONFIG.CMBPBase.OssPath, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia, formattedName+".jpg")
+		m.VideoPath = filepath.Join(global.CMBP_CONFIG.CMBPBase.OssPath, global.CMBP_CONFIG.CMBPBase.ModelWareHouseMedia, formattedName+".mp4")
+	}
+	return nil
 }
 
 // DataModelConfig 对应 t_data_model_config 表
@@ -829,4 +856,8 @@ type ModelUpdateRecord struct {
 	ModelID          string `gorm:"column:model_id;type:varchar(32)" json:"model_id" doc:"模型ID"`
 	ModelChineseName string `gorm:"column:model_chinese_name;type:varchar(255)" json:"model_chinese_name" doc:"模型名称"`
 	Status           int    `gorm:"column:status type:int" json:"statu" doc:"状态 0 未更新 1 已更新"`
+}
+
+func (ModelUpdateRecord) TableName() string {
+	return "t_model_update_record"
 }

@@ -268,6 +268,22 @@ func (m *ModelOptionApi) PostTestFreeApplication(c *gin.Context) {
 	return
 }
 
+func (m *ModelOptionApi) DeleteTestFreeApplication(c *gin.Context) {
+	var params systemReq.DeleteTestFreeApplication
+	err := c.ShouldBindJSON(&params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = modelService.DeleteTestFreeApplication(params)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.Ok(c)
+	return
+}
+
 func (m *ModelOptionApi) UploadFile(c *gin.Context) {
 	var params systemReq.UploadFile
 	c.ShouldBind(&params)

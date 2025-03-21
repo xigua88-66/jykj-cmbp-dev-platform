@@ -153,3 +153,7 @@ type TestFreeApplyCation struct {
 	ModelID string `form:"model_id" binding:"required" json:"model_id"`
 	Reason  string `form:"reason" json:"reason"`
 }
+
+type DeleteTestFreeApplication struct {
+	ModelID string `form:"model_id" binding:"required" json:"model_id"`
+}

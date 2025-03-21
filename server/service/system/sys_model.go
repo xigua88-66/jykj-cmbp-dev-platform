@@ -1531,25 +1531,26 @@ func (modelService *ModelService) GetTestFreeApplication(params systemReq.GetTes
 	} else {
 		QUERY.Order("t_application_record.create_time DESC").Pluck("model_id", &modelId)
 	}
-	//count := len(modelId)
 	modelId = modelId[(*params.Page-1)**params.Limit : *params.Page**params.Limit]
 
 	var testFreeModelRes []system.TestFreeModelRes
 
-	global.CMBP_DB.Table("t_model_all AS mal").
+	err = global.CMBP_DB.Table("t_model_all AS mal").
 		Joins("JOIN t_model_type AS mty ON mal.model_type = mty.model_type").
 		Joins("JOIN t_model_field AS mf ON mty.model_field_id = mf.id").
 		Joins("JOIN t_hardware_arch AS hard ON hard.code = mal.hardware_type").
 		Joins("JOIN t_user_info AS us ON mal.user = us.id").
 		Joins("JOIN t_application_record AS record ON mal.id = record.model_id").
 		Where("mal.id IN ?", modelId).
-		Select("mal.*, mty.model_type_desc AS model_type_desc, mf.name AS model_field_desc, hard.name AS hardware_type_name, us.username AS developer").
-		Scan(&testFreeModelRes)
+		Select("mal.*, mal.id AS model_id, ifnull(record.application_status, mal.test_status) AS test_status, ifnull(record.process_type, 1) AS process_type, mty.model_type_desc AS model_type_desc, mf.name AS model_field_desc, hard.name AS hardware_type_name, us.username AS developer, us.phone AS phone, DATE_FORMAT(record.create_time, '%Y-%m-%d %H:%i:%s') AS application_time").
+		Order("record.create_time DESC").
+		//Scan(&testFreeModelRes).Error
+		Find(&testFreeModelRes).Error
 
 	if err != nil {
 		return nil, err
 	}
-	return testFreeModelRes, nil
+	return map[string]interface{}{"count": len(testFreeModelRes), "model_list": testFreeModelRes}, nil
 	//for _, mal := range modelAllList {
 	//	d := map[string]interface{}{
 	//		"model_id": mal.ID,
@@ -1613,6 +1614,7 @@ func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeA
 	}
 
 	isProcess := modelAll.IsProcess
+	global.CMBP_LOG.Info(fmt.Sprintf("是否需要审核：%v", isProcess))
 	var applyCationOld system.ApplicationRecord
 	err = global.CMBP_DB.Model(&system.ApplicationRecord{}).Where("model_id=?", modelAll.ID).First(&applyCationOld).Error
 	if err != nil {
@@ -1621,11 +1623,17 @@ func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeA
 			return nil, err
 		}
 	}
+	tx := global.CMBP_DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	modelUpdateStatus := 0
 	if isProcess == 1 {
 		*modelAll.TestStatus = 99
 		modelAll.IsProcess = 0
-		err = global.CMBP_DB.Save(&system.ApplicationRecord{
+		err = tx.Save(&system.ApplicationRecord{
 			ModelID:           params.ModelID,
 			ApplicationStatus: 99,
 			Reason:            params.Reason,
@@ -1641,14 +1649,11 @@ func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeA
 		if modelAll.ModelKind != 1 {
 			*modelAll.TestStatus = 201
 
-			// TODO 更新边缘平台下载的模型
+			var userName string
+			global.CMBP_DB.Model(&system.Users{}).Where("id=?", userID).Limit(1).Pluck("username", &userName)
+			asyncPublishModel(modelAll.ID, userName)
 		} else {
 			modelAll.TestStatus = nil
-		}
-		err = global.CMBP_DB.Save(&modelAll).Error
-		if err != nil {
-			global.CMBP_LOG.Error(fmt.Sprintf("数据库报错报错了：:%v", err.Error()))
-			return nil, err
 		}
 
 		var developer string
@@ -1661,9 +1666,13 @@ func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeA
 		}
 		global.CMBP_LOG.Info(fmt.Sprintf("开发者:%v", developer))
 	}
-
+	err = tx.Save(&modelAll).Error
+	if err != nil {
+		global.CMBP_LOG.Error(fmt.Sprintf("数据库报错报错了：:%v", err.Error()))
+		return nil, err
+	}
 	if applyCationOld.ApplicationStatus == 101 {
-		err = global.CMBP_DB.Save(system.ModelUpdateRecord{
+		err = tx.Save(system.ModelUpdateRecord{
 			UserID:           userID,
 			ModelID:          params.ModelID,
 			ModelChineseName: modelAll.ModelChineseName,
@@ -1674,11 +1683,19 @@ func (modelService *ModelService) TestFreeApplyCation(params systemReq.TestFreeA
 			return nil, err
 		}
 	}
+
 	if applyCationOld.ID != "" {
+		// 这里不走事务，直接先删除旧的，再提交事务
 		err = global.CMBP_DB.Delete(&system.ApplicationRecord{}, "model_id=?", params.ModelID).Error
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	err = tx.Commit().Error
+	if err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 	return nil, nil
 }
@@ -1695,7 +1712,184 @@ func asyncPublishModel(modelID, userName string) {
 	}
 	var mineModel []system.Model
 	err = global.CMBP_DB.Model(&system.Model{}).Where("model_all_id=?", modelID).Find(&mineModel).Error
+	if err != nil {
+		global.CMBP_LOG.Error(err.Error())
+	}
+	modelAll.TestStatus = nil
 
+	if len(mineModel) > 0 {
+		tx := global.CMBP_DB.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+		for _, m := range mineModel {
+			if m.NewModelFlag != 1 {
+				if utils.FileExist(m.ModelZipFile()) {
+					err = os.Remove(m.ModelZipFile())
+					if err != nil {
+						global.CMBP_LOG.Error(fmt.Sprintf("矿编码：%v下的模型：%v删除失败", m.MineCode, m.ModelZipFile()))
+					}
+				}
+				if modelAll.NewModelFlag {
+					if strings.ToLower(global.CMBP_CONFIG.CMBPBase.OssMode) == "minio" {
+						err = utils.MinIOObj.Download(global.CMBP_CONFIG.MinIO.Bucket,
+							fmt.Sprintf("models/models/%s/%s.zip", modelAll.ModelNameAndVersion(), modelAll.ModelNameAndVersion()),
+							filepath.Join(global.CMBP_CONFIG.CMBPBase.MineModelDir, m.MineCode, modelAll.ModelNameAndVersion()+".zip"))
+						if err != nil {
+							global.CMBP_LOG.Error(err.Error())
+							*modelAll.TestStatus = 202
+						}
+					} else if strings.ToLower(global.CMBP_CONFIG.CMBPBase.OssMode) == "obs" {
+						err = upload.HuaWeiObs.Download("", fmt.Sprintf("models/models/%s/%s.zip", modelAll.ModelNameAndVersion(), modelAll.ModelNameAndVersion()),
+							filepath.Join(global.CMBP_CONFIG.CMBPBase.MineModelDir, m.MineCode, modelAll.ModelNameAndVersion()+".zip"))
+						if err != nil {
+							global.CMBP_LOG.Error(err.Error())
+							*modelAll.TestStatus = 202
+						}
+					}
+				} else {
+					err = utils.FileCopy(modelAll.ModelZipFile(), m.ModelZipFile())
+					if err != nil {
+						global.CMBP_LOG.Error(err.Error())
+					}
+				}
+				m.UpdateTime = new(time.Time)
+			}
+			imgFile := filepath.Join(global.CMBP_CONFIG.CMBPBase.OssModelMedia, m.ModelNameAndVersion()+".jpg")
+			if modelAll.ModelImgFile() != imgFile {
+				if utils.FileExist(imgFile) {
+					_ = os.Remove(imgFile)
+				}
+				_ = utils.CopyFile(modelAll.ModelImgFile(), imgFile)
+			}
+			m.ModelDescription = modelAll.ModelDescription
+			m.ModelChineseName = modelAll.ModelChineseName
+			m.ModelType = modelAll.ModelType
+			var isGpu system.ModelType
+			err = global.CMBP_DB.Model(&system.ModelType{}).Where("model_type=?", modelAll.ModelType).First(&isGpu).Error
+			if err != nil {
+				global.CMBP_LOG.Error(err.Error())
+			}
+			m.IsGPU = isGpu.IsGPU
+			m.HardwareType = modelAll.HardwareType
+			m.IsImage = modelAll.IsImage
+			m.Cmd = modelAll.CMD
+			m.JSONURL = modelAll.JsonURL
+			m.ImgURL = modelAll.ImgURL
+			m.NeedGPU = modelAll.NeedGPU
+			m.IsRealChannel = &modelAll.IsRealChannel
+			m.OnBoot = modelAll.OnBoot
+			m.BusinessList = modelAll.BusinessList
+			m.BusinessParams = modelAll.BusinessParams
+			m.MD5 = modelAll.MD5
+			m.Accuracy = modelAll.Accuracy
+			m.TestDuration = modelAll.TestDuration
+
+			var responder string
+			if m.User != "" {
+				global.CMBP_DB.Model(&system.Users{}).Where("id=?", m.User).Pluck("username", &responder)
+			} else {
+				global.CMBP_DB.Model(&system.Users{}).Where("mine_code").Limit(1).Pluck("username", &responder)
+			}
+
+			if userName == "" {
+				userName = "admin"
+			}
+			// 生成一个UUID
+			uid, err := uuid.NewV4()
+			if err != nil {
+				global.CMBP_LOG.Error("生成UUID失败")
+			}
+			id := strings.ToUpper(strings.Join(strings.Split(uid.String(), "-"), ""))
+			event := new(system.Event)
+			event.ID = id
+			event.MineCode = &m.MineCode
+			event.EventType = 3
+			event.EventStatus = 0
+			event.Creator = &userName
+			event.Responder = &responder
+
+			err = tx.Save(&event).Error
+			if err != nil {
+				global.CMBP_LOG.Error(fmt.Sprintf("事件表写入失败：%v", err.Error()))
+			}
+
+			title := "模型更新"
+
+			err = tx.Save(&system.ModelDeploy{
+				MineCode: &m.MineCode,
+				EventID:  &id,
+				ModelID:  &modelAll.ID,
+				Title:    &title,
+				Type:     3,
+			}).Error
+			if err != nil {
+				global.CMBP_LOG.Error(fmt.Sprintf("部署表写入失败：%v", err.Error()))
+			}
+			err = tx.Save(&m).Error
+			if err != nil {
+				global.CMBP_LOG.Error(fmt.Sprintf("模型下载记录表写入失败%v", err.Error()))
+			}
+		}
+		err = tx.Commit().Error
+		if err != nil {
+			global.CMBP_LOG.Error(err.Error())
+			tx.Rollback()
+		}
+	}
+}
+
+func (modelService *ModelService) DeleteTestFreeApplication(params systemReq.DeleteTestFreeApplication) error {
+	var modelAll system.ModelAll
+	err := global.CMBP_DB.Model(&system.ModelAll{}).Where("id=?", params.ModelID).Where("test_status=?", 99).First(&modelAll).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("模型已审核，无法撤销申请。")
+		} else {
+			return err
+		}
+	}
+
+	var applyCation []system.ApplicationRecord
+	err = global.CMBP_DB.Model(&system.ApplicationRecord{}).Where("model_id=?", params.ModelID).Order("create_time DESC").Find(&applyCation).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("发布申请不存在，请传递正确模型id")
+		}
+		return err
+	}
+	if len(applyCation) > 0 {
+		err = global.CMBP_DB.Delete(&system.ApplicationRecord{}, &applyCation[0]).Error
+		if err != nil {
+			return err
+		}
+	}
+
+	var modelLastUpdate system.ModelUpdateRecord
+	err = global.CMBP_DB.Model(&system.ModelUpdateRecord{}).Where("model_id=?", params.ModelID).Order("create_time DESC").First(&modelLastUpdate).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			global.CMBP_LOG.Warn(fmt.Sprintf("模型更新表记录为空：%v", err.Error()))
+		} else {
+			return err
+		}
+	}
+	if modelLastUpdate.ID != "" {
+		err = global.CMBP_DB.Delete(&system.ModelUpdateRecord{}, "model_id=? ORDER BY create_time DESC LIMIT 1", params.ModelID).Error
+		if err != nil {
+			return err
+		}
+	}
+	*modelAll.TestStatus = 0
+	modelAll.IsProcess = 1
+
+	err = global.CMBP_DB.Save(&modelAll).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (modelService *ModelService) CheckName(params systemReq.CheckName, userId string) (interface{}, error) {
